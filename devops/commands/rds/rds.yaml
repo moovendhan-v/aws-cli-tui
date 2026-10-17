@@ -1,0 +1,48 @@
+commands:
+  - id: rds.instances.list
+    name: List Databases
+    category: RDS
+    description: List RDS instances with engine, status and endpoint
+    tags: [database, db, rds, postgres, mysql, aurora]
+    execution: { type: aws_sdk, service: rds, operation: DescribeDBInstances }
+    risk: read_only
+
+  - id: rds.instance.describe
+    name: Inspect Database Endpoint
+    category: RDS
+    description: Show endpoint, port, Multi-AZ, public access and encryption for a database
+    tags: [database, endpoint, port, connect, security]
+    execution: { type: aws_sdk, service: rds, operation: DescribeDBInstances }
+    parameters:
+      - { name: db_instance_id, type: resource, resource: rds_instance, required: true }
+    risk: read_only
+
+  - id: rds.connections
+    name: Database Connection Metrics
+    category: RDS
+    description: DatabaseConnections over time for an RDS instance
+    tags: [database, connections, metrics, too many connections]
+    execution: { type: aws_sdk, service: cloudwatch, operation: GetMetricStatistics }
+    parameters:
+      - { name: dimension_value, type: resource, resource: rds_instance, required: true, description: DB instance identifier }
+      - { name: namespace, type: string, default: AWS/RDS }
+      - { name: metric, type: string, default: DatabaseConnections }
+      - { name: dimension_name, type: string, default: DBInstanceIdentifier }
+      - { name: since, type: duration, default: 3h }
+      - { name: period, type: duration, default: 5m }
+    risk: read_only
+
+  - id: rds.cpu
+    name: Database CPU Utilization
+    category: RDS
+    description: CPUUtilization over time for an RDS instance
+    tags: [database, cpu, metrics, slow queries, performance]
+    execution: { type: aws_sdk, service: cloudwatch, operation: GetMetricStatistics }
+    parameters:
+      - { name: dimension_value, type: resource, resource: rds_instance, required: true, description: DB instance identifier }
+      - { name: namespace, type: string, default: AWS/RDS }
+      - { name: metric, type: string, default: CPUUtilization }
+      - { name: dimension_name, type: string, default: DBInstanceIdentifier }
+      - { name: since, type: duration, default: 3h }
+      - { name: period, type: duration, default: 5m }
+    risk: read_only

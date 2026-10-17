@@ -1,0 +1,65 @@
+commands:
+  - id: ec2.instances.list
+    name: List EC2 Instances
+    category: EC2
+    description: List instances, optionally filtered by name, ID, IP, state or tag
+    tags: [instances, servers, vm, hosts, find]
+    execution: { type: aws_sdk, service: ec2, operation: DescribeInstances }
+    parameters:
+      - name: query
+        type: string
+        description: Text to match against name, ID, private IP, state or tags
+    risk: read_only
+
+  - id: ec2.instance.describe
+    name: Inspect EC2 Instance
+    category: EC2
+    description: Show networking, security groups, IAM profile and tags for one instance
+    tags: [instance, details, inspect]
+    execution: { type: aws_sdk, service: ec2, operation: DescribeInstances }
+    parameters:
+      - name: instance_id
+        type: resource
+        resource: ec2_instance
+        required: true
+        pattern: 'i-[0-9a-f]{8,17}'
+    risk: read_only
+
+  - id: ec2.instance.security-groups
+    name: Describe Instance Security Groups
+    category: EC2
+    description: Show inbound and outbound rules for the security groups on an instance
+    tags: [security group, firewall, ports, ingress, egress, connectivity, network]
+    execution: { type: aws_sdk, service: ec2, operation: DescribeSecurityGroups }
+    parameters:
+      - name: instance_id
+        type: resource
+        resource: ec2_instance
+        required: true
+        pattern: 'i-[0-9a-f]{8,17}'
+    risk: read_only
+
+  - id: ec2.instance.cpu
+    name: EC2 CPU Utilization
+    category: Metrics
+    description: Average and maximum CPUUtilization for an instance over a time range
+    tags: [cpu, metrics, utilization, load, performance, slow]
+    execution: { type: aws_sdk, service: cloudwatch, operation: GetMetricStatistics }
+    parameters:
+      - { name: dimension_value, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}', description: Instance ID }
+      - { name: namespace, type: string, default: AWS/EC2 }
+      - { name: metric, type: string, default: CPUUtilization }
+      - { name: dimension_name, type: string, default: InstanceId }
+      - { name: since, type: duration, default: 3h }
+      - { name: period, type: duration, default: 5m }
+    risk: read_only
+
+  - id: ec2.instance.reboot
+    name: Reboot EC2 Instance
+    category: EC2
+    description: Request an OS reboot of an instance. The instance is briefly unavailable.
+    tags: [reboot, restart, recover]
+    execution: { type: aws_sdk, service: ec2, operation: RebootInstances }
+    parameters:
+      - { name: instance_id, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}' }
+    risk: mutating

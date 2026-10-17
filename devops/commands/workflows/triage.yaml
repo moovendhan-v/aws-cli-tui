@@ -1,0 +1,69 @@
+commands:
+  - id: workflow.ecs.triage
+    name: Why Is My ECS Service Failing?
+    category: Workflows
+    description: Service status, stopped-task reasons, active alarms and recent log errors in one run
+    tags: [ecs, failing, errors, crash, triage, debug, why, task]
+    execution:
+      type: workflow
+      steps:
+        - command: ecs.service.describe
+          with: { cluster: '{{cluster}}', service: '{{service}}' }
+        - command: ecs.tasks.stopped
+          with: { cluster: '{{cluster}}', service: '{{service}}', status: STOPPED }
+          continue_on_error: true
+        - command: metrics.alarms.active
+          continue_on_error: true
+        - command: logs.errors.search
+          with: { log_group: '{{log_group}}', since: 30m }
+          continue_on_error: true
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: service, type: resource, resource: ecs_service, required: true }
+      - { name: log_group, type: resource, resource: log_group, required: true, description: 'e.g. /ecs/my-service' }
+    risk: read_only
+    timeout: 3m
+
+  - id: workflow.ec2.health
+    name: EC2 Instance Health Check
+    category: Workflows
+    description: Instance details, SSM readiness, security groups and CPU for one instance
+    tags: [ec2, health, check, debug, unreachable, ssm]
+    execution:
+      type: workflow
+      steps:
+        - command: ec2.instance.describe
+          with: { instance_id: '{{instance_id}}' }
+        - command: ssm.instance.status
+          with: { instance_id: '{{instance_id}}' }
+          continue_on_error: true
+        - command: ec2.instance.security-groups
+          with: { instance_id: '{{instance_id}}' }
+          continue_on_error: true
+        - command: ec2.instance.cpu
+          with: { dimension_value: '{{instance_id}}', since: 1h }
+          continue_on_error: true
+    parameters:
+      - { name: instance_id, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}' }
+    risk: read_only
+    timeout: 2m
+
+  - id: workflow.db.connectivity
+    name: Database Connectivity Check
+    category: Workflows
+    description: Endpoint/security settings, connection count and CPU for a database before tunnelling in
+    tags: [database, connect, connectivity, production, rds, tunnel]
+    execution:
+      type: workflow
+      steps:
+        - command: rds.instance.describe
+          with: { db_instance_id: '{{db_instance_id}}' }
+        - command: rds.connections
+          with: { dimension_value: '{{db_instance_id}}', since: 1h }
+          continue_on_error: true
+        - command: rds.cpu
+          with: { dimension_value: '{{db_instance_id}}', since: 1h }
+          continue_on_error: true
+    parameters:
+      - { name: db_instance_id, type: resource, resource: rds_instance, required: true }
+    risk: read_only

@@ -1,0 +1,89 @@
+commands:
+  - id: logs.groups.list
+    name: List Log Groups
+    category: Logs
+    description: List CloudWatch log groups, optionally by name prefix
+    tags: [logs, log groups, cloudwatch]
+    execution: { type: aws_sdk, service: logs, operation: DescribeLogGroups }
+    parameters:
+      - { name: prefix, type: string, description: 'e.g. /aws/ecs/' }
+    risk: read_only
+
+  - id: logs.errors.search
+    name: Search Logs for Errors
+    category: Logs
+    description: Find ERROR, Exception and timeout lines in a log group over a time range
+    tags: [errors, exception, timeout, failing, search, logs, stack trace, why]
+    execution: { type: aws_sdk, service: logs, operation: FilterLogEvents }
+    parameters:
+      - { name: log_group, type: resource, resource: log_group, required: true }
+      - { name: pattern, type: string, default: '?ERROR ?Error ?Exception ?timeout ?Timeout' }
+      - { name: since, type: duration, default: 1h }
+      - { name: limit, type: int, default: '200' }
+    risk: read_only
+    timeout: 60s
+
+  - id: logs.search
+    name: Search Logs (Time Range)
+    category: Logs
+    description: Run a CloudWatch filter pattern over a log group for a time range
+    tags: [logs, grep, search, filter, pattern]
+    execution: { type: aws_sdk, service: logs, operation: FilterLogEvents }
+    parameters:
+      - { name: log_group, type: resource, resource: log_group, required: true }
+      - { name: pattern, type: string }
+      - { name: since, type: duration, default: 15m }
+      - { name: limit, type: int, default: '500' }
+    risk: read_only
+    timeout: 60s
+
+  - id: metrics.alarms.active
+    name: Show Active Alarms
+    category: Metrics
+    description: List CloudWatch alarms currently in ALARM state with their reasons
+    tags: [alarms, alerts, incidents, firing, errors]
+    execution: { type: aws_sdk, service: cloudwatch, operation: DescribeAlarms }
+    parameters:
+      - { name: state, type: enum, options: [ALARM, OK, INSUFFICIENT_DATA], default: ALARM }
+    risk: read_only
+
+  - id: metrics.alarms.all
+    name: List All Alarms
+    category: Metrics
+    description: List every metric and composite alarm with its current state
+    tags: [alarms, monitoring]
+    execution: { type: aws_sdk, service: cloudwatch, operation: DescribeAlarms }
+    risk: read_only
+
+  - id: metrics.statistics
+    name: Get Metric Statistics
+    category: Metrics
+    description: Average/maximum for any CloudWatch metric with a single dimension
+    tags: [metrics, graph, statistics, cloudwatch]
+    execution: { type: aws_sdk, service: cloudwatch, operation: GetMetricStatistics }
+    parameters:
+      - { name: namespace, type: string, required: true, description: 'e.g. AWS/RDS' }
+      - { name: metric, type: string, required: true, description: 'e.g. DatabaseConnections' }
+      - { name: dimension_name, type: string, required: true, description: 'e.g. DBInstanceIdentifier' }
+      - { name: dimension_value, type: string, required: true }
+      - { name: since, type: duration, default: 3h }
+      - { name: period, type: duration, default: 5m }
+    risk: read_only
+
+  - id: lambda.functions.list
+    name: List Lambda Functions
+    category: Lambda
+    description: List functions with runtime, memory and timeout
+    tags: [lambda, functions, serverless]
+    execution: { type: aws_sdk, service: lambda, operation: ListFunctions }
+    risk: read_only
+
+  - id: lambda.function.config
+    name: Inspect Lambda Configuration
+    category: Lambda
+    description: Show a function's runtime, role, VPC, environment variable names and state
+    tags: [lambda, function, configuration]
+    execution: { type: aws_sdk, service: lambda, operation: GetFunctionConfiguration }
+    parameters:
+      - { name: function_name, type: resource, resource: lambda_function, required: true }
+    risk: read_only

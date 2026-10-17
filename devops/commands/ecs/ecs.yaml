@@ -1,0 +1,79 @@
+commands:
+  - id: ecs.clusters.list
+    name: List ECS Clusters
+    category: ECS
+    description: List clusters with running/pending task and service counts
+    tags: [clusters, containers, fargate]
+    execution: { type: aws_sdk, service: ecs, operation: ListClusters }
+    risk: read_only
+
+  - id: ecs.service.describe
+    name: Describe ECS Service
+    category: ECS
+    description: Inspect the configuration and deployment status of a service
+    tags: [service, deployment, rollout, desired, running, errors]
+    execution: { type: aws_sdk, service: ecs, operation: DescribeServices }
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: service, type: resource, resource: ecs_service, required: true }
+    risk: read_only
+    timeout: 30s
+
+  - id: ecs.services.list
+    name: Check Running vs Desired Tasks
+    category: ECS
+    description: Compare desired, running and pending task counts for every service in a cluster
+    tags: [desired, running, pending, capacity, unhealthy, errors, failing]
+    execution: { type: aws_sdk, service: ecs, operation: DescribeServices }
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+    risk: read_only
+
+  - id: ecs.tasks.stopped
+    name: Inspect Stopped Tasks
+    category: ECS
+    description: Show recently stopped tasks with stop codes, stopped reasons and container exit codes
+    tags: [stopped, crash, failing, errors, exit code, oom, restart, why]
+    execution: { type: aws_sdk, service: ecs, operation: DescribeTasks }
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: service, type: resource, resource: ecs_service }
+      - { name: status, type: enum, options: [STOPPED, RUNNING], default: STOPPED }
+    risk: read_only
+
+  - id: ecs.taskdef.describe
+    name: Describe Task Definition
+    category: Deployments
+    description: Show a task definition revision (image, CPU/memory, env names, log config)
+    tags: [task definition, revision, image, version]
+    execution: { type: aws_sdk, service: ecs, operation: DescribeTaskDefinition }
+    parameters:
+      - { name: task_definition, type: string, required: true, description: 'family:revision or ARN' }
+    risk: read_only
+
+  - id: ecs.service.force-deploy
+    name: Force New ECS Deployment
+    category: Deployments
+    description: Start a new deployment of the current task definition (replaces all tasks)
+    tags: [redeploy, restart, rollout, deployment]
+    execution: { type: aws_sdk, service: ecs, operation: UpdateService }
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: service, type: resource, resource: ecs_service, required: true }
+    risk: mutating
+
+  - id: ecs.exec.shell
+    name: ECS Exec Into Container
+    category: ECS
+    description: Open an interactive shell in a running container (requires ECS Exec enabled)
+    tags: [exec, shell, container, connect, debug, terminal]
+    execution:
+      type: interactive
+      program: aws
+      args: [ecs, execute-command, --cluster, '{{cluster}}', --task, '{{task}}', --container, '{{container}}', --interactive, --command, '{{shell}}']
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: task, type: resource, resource: ecs_task, required: true }
+      - { name: container, type: string, required: true }
+      - { name: shell, type: enum, options: [/bin/sh, /bin/bash], default: /bin/sh }
+    risk: mutating

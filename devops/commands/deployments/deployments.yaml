@@ -1,0 +1,22 @@
+commands:
+  - id: cfn.stack.events
+    name: CloudFormation Stack Events
+    category: Deployments
+    description: Show recent stack events with status reasons
+    tags: [cloudformation, stack, deploy, rollback, events]
+    execution: { type: aws_sdk, service: cloudformation, operation: DescribeStackEvents }
+    parameters:
+      - { name: stack_name, type: string, required: true }
+      - { name: failed_only, type: bool, default: 'false' }
+    risk: read_only
+
+  - id: cfn.stack.failures
+    name: Find Failed Stack Resources
+    category: Deployments
+    description: Show only the FAILED events of a stack to find why a deployment rolled back
+    tags: [cloudformation, failed, rollback, deployment, errors, why]
+    execution: { type: aws_sdk, service: cloudformation, operation: DescribeStackEvents }
+    parameters:
+      - { name: stack_name, type: string, required: true }
+      - { name: failed_only, type: bool, default: 'true' }
+    risk: read_only

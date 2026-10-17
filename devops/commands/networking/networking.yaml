@@ -1,0 +1,56 @@
+commands:
+  - id: elb.list
+    name: List Load Balancers
+    category: Networking
+    description: List ALBs/NLBs with scheme, state and DNS name
+    tags: [load balancer, alb, nlb, elb]
+    execution: { type: aws_sdk, service: elbv2, operation: DescribeLoadBalancers }
+    risk: read_only
+
+  - id: elb.target-groups
+    name: List Target Groups
+    category: Networking
+    description: List target groups, optionally for one load balancer
+    tags: [target group, alb, health check]
+    execution: { type: aws_sdk, service: elbv2, operation: DescribeTargetGroups }
+    parameters:
+      - { name: load_balancer_arn, type: string }
+    risk: read_only
+
+  - id: elb.target-health
+    name: Inspect Target Health
+    category: Networking
+    description: Show health state and failure reason for every target in a target group
+    tags: [unhealthy, targets, health check, 502, 503, alb, errors]
+    execution: { type: aws_sdk, service: elbv2, operation: DescribeTargetHealth }
+    parameters:
+      - { name: target_group_arn, type: string, required: true, pattern: 'arn:aws[a-z-]*:elasticloadbalancing:.+' }
+    risk: read_only
+
+  - id: vpc.list
+    name: List VPCs
+    category: Networking
+    description: List VPCs with CIDR blocks
+    tags: [vpc, network, cidr]
+    execution: { type: aws_sdk, service: ec2, operation: DescribeVpcs }
+    risk: read_only
+
+  - id: vpc.subnets
+    name: List Subnets
+    category: Networking
+    description: List subnets, optionally in one VPC
+    tags: [subnet, network, az, cidr]
+    execution: { type: aws_sdk, service: ec2, operation: DescribeSubnets }
+    parameters:
+      - { name: vpc_id, type: string, pattern: 'vpc-[0-9a-f]+' }
+    risk: read_only
+
+  - id: vpc.route-tables
+    name: Describe Route Tables
+    category: Networking
+    description: Show routes (IGW, NAT, TGW, peering) for a VPC
+    tags: [routes, route table, nat, internet, connectivity]
+    execution: { type: aws_sdk, service: ec2, operation: DescribeRouteTables }
+    parameters:
+      - { name: vpc_id, type: string, pattern: 'vpc-[0-9a-f]+' }
+    risk: read_only

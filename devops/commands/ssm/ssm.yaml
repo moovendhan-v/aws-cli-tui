@@ -1,0 +1,47 @@
+commands:
+  - id: ssm.instance.status
+    name: Check SSM Managed Status
+    category: SSM
+    description: Check whether an instance is SSM-managed, online, and ready for a session
+    tags: [ssm, agent, managed, session, prerequisites, ping, connect]
+    execution: { type: aws_sdk, service: ssm, operation: DescribeInstanceInformation }
+    parameters:
+      - { name: instance_id, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}' }
+    risk: read_only
+
+  - id: ssm.session.start
+    name: Start SSM Session
+    category: SSM
+    description: Open an interactive Session Manager shell on an instance
+    tags: [ssm, shell, ssh, connect, login, terminal, session]
+    execution:
+      type: interactive
+      program: aws
+      args: [ssm, start-session, --target, '{{instance_id}}']
+    parameters:
+      - { name: instance_id, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}' }
+    risk: mutating
+
+  - id: ssm.tunnel.database
+    name: Open Database Tunnel
+    category: RDS
+    description: Port-forward a local port to a database through an SSM-managed instance in the same VPC
+    tags: [database, db, tunnel, port forward, connect, rds, postgres, mysql, bastion]
+    execution:
+      type: interactive
+      program: aws
+      args:
+        - ssm
+        - start-session
+        - --target
+        - '{{instance_id}}'
+        - --document-name
+        - AWS-StartPortForwardingSessionToRemoteHost
+        - --parameters
+        - 'host={{db_host}},portNumber={{db_port}},localPortNumber={{local_port}}'
+    parameters:
+      - { name: instance_id, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}', description: SSM-managed instance that can reach the database }
+      - { name: db_host, type: string, required: true, pattern: '[A-Za-z0-9.-]+', description: Database endpoint hostname }
+      - { name: db_port, type: int, default: '5432' }
+      - { name: local_port, type: int, default: '15432' }
+    risk: mutating

@@ -1,0 +1,32 @@
+commands:
+  - id: identity.caller
+    name: Show Caller Identity
+    category: Identity
+    description: Show the account, user/role ARN and user ID behind the active profile
+    tags: [whoami, account, role, sts, credentials]
+    execution: { type: aws_sdk, service: sts, operation: GetCallerIdentity }
+    risk: read_only
+    timeout: 15s
+
+  - id: identity.sso.login
+    name: SSO Login
+    category: Identity
+    description: Run `aws sso login` for the active profile (opens a browser)
+    tags: [sso, login, expired, token, authenticate, credentials]
+    execution:
+      type: interactive
+      program: aws
+      args: [sso, login]
+    risk: read_only
+
+  - id: identity.configure.list
+    name: Show Profile Configuration
+    category: Identity
+    description: Show where the active profile's credentials and region come from
+    tags: [profile, config, credentials, region]
+    execution:
+      type: process
+      program: aws
+      args: [configure, list]
+    risk: read_only
+    timeout: 15s
