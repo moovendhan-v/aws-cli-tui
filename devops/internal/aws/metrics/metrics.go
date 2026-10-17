@@ -3,6 +3,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -16,6 +17,41 @@ import (
 type Alarm struct {
 	Name, State, Namespace, Metric, Reason string
 	Updated                                time.Time
+	Dimensions                             map[string]string
+	Threshold                              *float64
+	Comparison, Statistic                  string
+	Period                                 int32
+	Description                            string
+}
+
+func convertAlarm(a types.MetricAlarm) Alarm {
+	al := Alarm{Name: aws.ToString(a.AlarmName), State: string(a.StateValue), Namespace: aws.ToString(a.Namespace),
+		Metric: aws.ToString(a.MetricName), Reason: aws.ToString(a.StateReason), Updated: aws.ToTime(a.StateUpdatedTimestamp),
+		Threshold: a.Threshold, Comparison: string(a.ComparisonOperator), Statistic: string(a.Statistic),
+		Period: aws.ToInt32(a.Period), Description: aws.ToString(a.AlarmDescription), Dimensions: map[string]string{}}
+	for _, d := range a.Dimensions {
+		al.Dimensions[aws.ToString(d.Name)] = aws.ToString(d.Value)
+	}
+	return al
+}
+
+type StateChange struct {
+	At      time.Time
+	Summary string
+}
+
+// History returns recent state changes for an alarm.
+func History(ctx context.Context, s *auth.Session, name string) ([]StateChange, error) {
+	out, err := s.CloudWatch().DescribeAlarmHistory(ctx, &sdk.DescribeAlarmHistoryInput{AlarmName: aws.String(name),
+		HistoryItemType: types.HistoryItemTypeStateUpdate, MaxRecords: aws.Int32(20)})
+	if err != nil {
+		return nil, err
+	}
+	var h []StateChange
+	for _, it := range out.AlarmHistoryItems {
+		h = append(h, StateChange{At: aws.ToTime(it.Timestamp), Summary: aws.ToString(it.HistorySummary)})
+	}
+	return h, nil
 }
 
 // Alarms lists metric alarms; state "" returns all states.
@@ -32,10 +68,7 @@ func Alarms(ctx context.Context, s *auth.Session, state string) ([]Alarm, error)
 			return nil, err
 		}
 		for _, a := range page.MetricAlarms {
-			out = append(out, Alarm{
-				Name: aws.ToString(a.AlarmName), State: string(a.StateValue), Namespace: aws.ToString(a.Namespace),
-				Metric: aws.ToString(a.MetricName), Reason: aws.ToString(a.StateReason), Updated: aws.ToTime(a.StateUpdatedTimestamp),
-			})
+			out = append(out, convertAlarm(a))
 		}
 		for _, a := range page.CompositeAlarms {
 			out = append(out, Alarm{
@@ -61,6 +94,9 @@ type Point struct {
 }
 
 type StatQuery struct {
+	// Stat selects one statistic (Average, Sum, Maximum, Minimum,
+	// SampleCount); its value is returned in Point.Average. Empty = Average+Maximum.
+	Stat              string
 	Namespace, Metric string
 	Dimensions        map[string]string
 	Since             time.Duration
@@ -75,6 +111,9 @@ func Statistics(ctx context.Context, s *auth.Session, q StatQuery) ([]Point, err
 		Period:     aws.Int32(int32(q.Period.Seconds())),
 		Statistics: []types.Statistic{types.StatisticAverage, types.StatisticMaximum},
 	}
+	if q.Stat != "" {
+		in.Statistics = []types.Statistic{types.Statistic(q.Stat), types.StatisticMaximum}
+	}
 	for k, v := range q.Dimensions {
 		in.Dimensions = append(in.Dimensions, types.Dimension{Name: aws.String(k), Value: aws.String(v)})
 	}
@@ -84,8 +123,78 @@ func Statistics(ctx context.Context, s *auth.Session, q StatQuery) ([]Point, err
 	}
 	pts := make([]Point, 0, len(out.Datapoints))
 	for _, d := range out.Datapoints {
-		pts = append(pts, Point{Time: aws.ToTime(d.Timestamp), Average: aws.ToFloat64(d.Average), Maximum: aws.ToFloat64(d.Maximum), Unit: string(d.Unit)})
+		v := aws.ToFloat64(d.Average)
+		switch q.Stat {
+		case "Sum":
+			v = aws.ToFloat64(d.Sum)
+		case "Minimum":
+			v = aws.ToFloat64(d.Minimum)
+		case "Maximum":
+			v = aws.ToFloat64(d.Maximum)
+		case "SampleCount":
+			v = aws.ToFloat64(d.SampleCount)
+		}
+		pts = append(pts, Point{Time: aws.ToTime(d.Timestamp), Average: v, Maximum: aws.ToFloat64(d.Maximum), Unit: string(d.Unit)})
 	}
 	sort.Slice(pts, func(i, j int) bool { return pts[i].Time.Before(pts[j].Time) })
 	return pts, nil
+}
+
+// AlarmsPage returns up to 100 alarms per page; state "" returns all.
+func AlarmsPage(ctx context.Context, s *auth.Session, state, token string) ([]Alarm, string, error) {
+	in := &sdk.DescribeAlarmsInput{MaxRecords: aws.Int32(100),
+		AlarmTypes: []types.AlarmType{types.AlarmTypeMetricAlarm, types.AlarmTypeCompositeAlarm}}
+	if state != "" {
+		in.StateValue = types.StateValue(state)
+	}
+	if token != "" {
+		in.NextToken = aws.String(token)
+	}
+	page, err := s.CloudWatch().DescribeAlarms(ctx, in)
+	if err != nil {
+		return nil, "", err
+	}
+	var out []Alarm
+	for _, a := range page.MetricAlarms {
+		out = append(out, convertAlarm(a))
+	}
+	for _, a := range page.CompositeAlarms {
+		out = append(out, Alarm{Name: aws.ToString(a.AlarmName), State: string(a.StateValue), Namespace: "composite",
+			Reason: aws.ToString(a.StateReason), Updated: aws.ToTime(a.StateUpdatedTimestamp)})
+	}
+	return out, aws.ToString(page.NextToken), nil
+}
+
+// EC2CPU fetches CPUUtilization (5-minute averages) for many instances in
+// batched GetMetricData calls (up to 500 metrics each).
+func EC2CPU(ctx context.Context, s *auth.Session, ids []string, since time.Duration) (map[string][]float64, error) {
+	out := map[string][]float64{}
+	end := time.Now()
+	for start := 0; start < len(ids); start += 500 {
+		chunk := ids[start:min(start+500, len(ids))]
+		in := &sdk.GetMetricDataInput{StartTime: aws.Time(end.Add(-since)), EndTime: aws.Time(end), ScanBy: types.ScanByTimestampAscending}
+		for i, id := range chunk {
+			in.MetricDataQueries = append(in.MetricDataQueries, types.MetricDataQuery{
+				Id: aws.String(fmt.Sprintf("m%d", i)),
+				MetricStat: &types.MetricStat{Period: aws.Int32(300), Stat: aws.String("Average"),
+					Metric: &types.Metric{Namespace: aws.String("AWS/EC2"), MetricName: aws.String("CPUUtilization"),
+						Dimensions: []types.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(id)}}}},
+			})
+		}
+		p := sdk.NewGetMetricDataPaginator(s.CloudWatch(), in)
+		for p.HasMorePages() {
+			page, err := p.NextPage(ctx)
+			if err != nil {
+				return out, err
+			}
+			for _, r := range page.MetricDataResults {
+				var idx int
+				fmt.Sscanf(aws.ToString(r.Id), "m%d", &idx)
+				if idx < len(chunk) {
+					out[chunk[idx]] = append(out[chunk[idx]], r.Values...)
+				}
+			}
+		}
+	}
+	return out, nil
 }

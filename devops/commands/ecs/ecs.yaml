@@ -48,7 +48,7 @@ commands:
     tags: [task definition, revision, image, version]
     execution: { type: aws_sdk, service: ecs, operation: DescribeTaskDefinition }
     parameters:
-      - { name: task_definition, type: string, required: true, description: 'family:revision or ARN' }
+      - { name: task_definition, type: resource, resource: ecs_taskdef, required: true, description: 'family:revision or ARN' }
     risk: read_only
 
   - id: ecs.service.force-deploy
@@ -60,6 +60,68 @@ commands:
     parameters:
       - { name: cluster, type: resource, resource: ecs_cluster, required: true }
       - { name: service, type: resource, resource: ecs_service, required: true }
+      - { name: force_new_deployment, type: bool, default: 'true' }
+    risk: mutating
+
+  - id: ecs.service.scale
+    name: Scale ECS Service
+    category: ECS
+    description: Change the desired task count of a service
+    tags: [scale, desired, capacity, tasks, replicas]
+    execution: { type: aws_sdk, service: ecs, operation: UpdateService }
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: service, type: resource, resource: ecs_service, required: true }
+      - { name: desired_count, type: int, required: true, pattern: '[0-9]{1,4}' }
+    risk: mutating
+
+  - id: ecs.service.rollback
+    name: Roll Back ECS Service
+    category: Deployments
+    description: Deploy an earlier task definition revision to a service
+    tags: [rollback, revert, deployment, revision, task definition]
+    execution: { type: aws_sdk, service: ecs, operation: UpdateService }
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: service, type: resource, resource: ecs_service, required: true }
+      - { name: task_definition, type: resource, resource: ecs_taskdef, required: true, description: 'family:revision to deploy' }
+    risk: mutating
+
+  - id: ecs.task.stop
+    name: Stop ECS Task
+    category: ECS
+    description: Stop one task; the service scheduler starts a replacement
+    tags: [stop, kill, restart, task, replace]
+    execution: { type: aws_sdk, service: ecs, operation: StopTask }
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: task, type: resource, resource: ecs_task, required: true }
+      - { name: reason, type: string, default: 'Stopped from devops CLI' }
+    risk: mutating
+
+  - id: ssm.tunnel.ecs
+    name: Port-Forward to ECS Task
+    category: ECS
+    description: Forward a local port to a port inside a running ECS task (needs ECS Exec enabled)
+    tags: [port forward, tunnel, ecs, container, debug, connect]
+    execution:
+      type: interactive
+      program: aws
+      args:
+        - ssm
+        - start-session
+        - --target
+        - 'ecs:{{cluster}}_{{task}}_{{runtime_id}}'
+        - --document-name
+        - AWS-StartPortForwardingSession
+        - --parameters
+        - 'portNumber={{port}},localPortNumber={{local_port}}'
+    parameters:
+      - { name: cluster, type: resource, resource: ecs_cluster, required: true }
+      - { name: task, type: resource, resource: ecs_task, required: true }
+      - { name: runtime_id, type: string, required: true, pattern: '[A-Za-z0-9-]+', description: Container runtime ID }
+      - { name: port, type: int, required: true }
+      - { name: local_port, type: int, default: '18080' }
     risk: mutating
 
   - id: ecs.exec.shell

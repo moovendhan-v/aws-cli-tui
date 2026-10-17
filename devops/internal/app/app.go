@@ -9,8 +9,10 @@ import (
 	"time"
 
 	library "devops/commands"
+	"devops/internal/aws/meter"
 	"devops/internal/aws/ops"
 	"devops/internal/aws/profiles"
+	"devops/internal/cache"
 	"devops/internal/commands"
 	"devops/internal/config"
 	"devops/internal/executor"
@@ -27,6 +29,8 @@ type Deps struct {
 	Runner     *commands.Runner
 	Exec       *executor.Manager
 	Store      *storage.Store // nil when history is unavailable
+	Cache      *cache.Store
+	Meter      *meter.Meter
 	Production safety.Production
 	SessionID  string
 	Warnings   []string
@@ -46,6 +50,10 @@ func New() (*Deps, error) {
 		Production: safety.NewProduction(cfg.Safety.ProductionPatterns, cfg.Safety.ProductionAccounts),
 		SessionID:  time.Now().Format("20060102-150405.000"),
 	}
+
+	d.Meter = meter.Default
+	d.ApplyLimits()
+	d.Cache = cache.New(cfg.Cache.Enabled, func(kind string) time.Duration { return cfg.Cache.TTLFor(kind) })
 
 	if d.Profiles, err = profiles.Discover(); err != nil {
 		d.Warnings = append(d.Warnings, "reading AWS profiles: "+err.Error())
@@ -84,6 +92,12 @@ func New() (*Deps, error) {
 	}
 	d.Runner = &commands.Runner{Registry: d.Registry, Exec: d.Exec, DefaultTimeout: cfg.Execution.DefaultTimeout.Duration}
 	return d, nil
+}
+
+// ApplyLimits pushes the configured API limits into the meter.
+func (d *Deps) ApplyLimits() {
+	l := d.Config.Limits
+	d.Meter.SetLimits(meter.Limits{RequestsPerSecond: l.RequestsPerSecond, WarnCalls: l.WarnAPICalls, MaxCalls: l.MaxAPICalls})
 }
 
 func (d *Deps) Close() {

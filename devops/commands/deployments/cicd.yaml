@@ -1,0 +1,109 @@
+commands:
+  - id: pipeline.state
+    name: Show Pipeline Status
+    category: Deployments
+    description: Current status of every stage and action in a pipeline
+    tags: [codepipeline, pipeline, deploy, stages, status, failed]
+    execution: { type: aws_sdk, service: codepipeline, operation: GetPipelineState }
+    parameters:
+      - { name: pipeline, type: resource, resource: pipeline, required: true }
+    risk: read_only
+
+  - id: pipeline.executions
+    name: Pipeline Run History
+    category: Deployments
+    description: Last 10 runs of a pipeline with trigger and source revision
+    tags: [codepipeline, history, executions, runs, commits]
+    execution: { type: aws_sdk, service: codepipeline, operation: ListPipelineExecutions }
+    parameters:
+      - { name: pipeline, type: resource, resource: pipeline, required: true }
+    risk: read_only
+
+  - id: pipeline.start
+    name: Start Pipeline Run
+    category: Deployments
+    description: Release the latest change through the pipeline
+    tags: [codepipeline, release, run, deploy, start]
+    execution: { type: aws_sdk, service: codepipeline, operation: StartPipelineExecution }
+    parameters:
+      - { name: pipeline, type: resource, resource: pipeline, required: true }
+    risk: mutating
+
+  - id: pipeline.stop
+    name: Stop Pipeline Run
+    category: Deployments
+    description: Stop an in-progress pipeline run (in-progress actions finish first)
+    tags: [codepipeline, stop, cancel, abort]
+    execution: { type: aws_sdk, service: codepipeline, operation: StopPipelineExecution }
+    parameters:
+      - { name: pipeline, type: resource, resource: pipeline, required: true }
+      - { name: execution_id, type: string, required: true }
+      - { name: reason, type: string, default: 'Stopped from devops CLI' }
+    risk: mutating
+
+  - id: pipeline.retry
+    name: Retry Failed Stage
+    category: Deployments
+    description: Retry the failed actions of a pipeline stage
+    tags: [codepipeline, retry, failed, stage]
+    execution: { type: aws_sdk, service: codepipeline, operation: RetryStageExecution }
+    parameters:
+      - { name: pipeline, type: resource, resource: pipeline, required: true }
+      - { name: stage, type: string, required: true }
+      - { name: execution_id, type: string, required: true }
+    risk: mutating
+
+  - id: pipeline.approval
+    name: Approve or Reject Manual Approval
+    category: Deployments
+    description: Answer a pending manual approval action in a pipeline
+    tags: [codepipeline, approve, reject, approval, gate]
+    execution: { type: aws_sdk, service: codepipeline, operation: PutApprovalResult }
+    parameters:
+      - { name: pipeline, type: resource, resource: pipeline, required: true }
+      - { name: stage, type: string, required: true }
+      - { name: action, type: string, required: true }
+      - { name: token, type: string, required: true, description: Approval token (filled automatically from the pipeline view) }
+      - { name: decision, type: enum, options: [Approved, Rejected], required: true }
+      - { name: summary, type: string }
+    risk: mutating
+
+  - id: build.get
+    name: Inspect CodeBuild Build
+    category: Deployments
+    description: Status, phases and log location of one build
+    tags: [codebuild, build, phases, failed]
+    execution: { type: aws_sdk, service: codebuild, operation: BatchGetBuilds }
+    parameters:
+      - { name: build_id, type: string, required: true, description: 'project:uuid' }
+    risk: read_only
+
+  - id: build.start
+    name: Start CodeBuild Build
+    category: Deployments
+    description: Start a new build of a CodeBuild project with its default settings
+    tags: [codebuild, build, start, run, ci]
+    execution: { type: aws_sdk, service: codebuild, operation: StartBuild }
+    parameters:
+      - { name: project, type: resource, resource: build_project, required: true }
+    risk: mutating
+
+  - id: build.stop
+    name: Stop CodeBuild Build
+    category: Deployments
+    description: Stop a running build
+    tags: [codebuild, stop, cancel]
+    execution: { type: aws_sdk, service: codebuild, operation: StopBuild }
+    parameters:
+      - { name: build_id, type: string, required: true }
+    risk: mutating
+
+  - id: build.retry
+    name: Retry CodeBuild Build
+    category: Deployments
+    description: Start a new build with the same settings as an earlier one
+    tags: [codebuild, retry, rebuild]
+    execution: { type: aws_sdk, service: codebuild, operation: RetryBuild }
+    parameters:
+      - { name: build_id, type: string, required: true }
+    risk: mutating

@@ -20,9 +20,21 @@ type Backer interface {
 	Back(e *core.Env) (bool, tea.Cmd)
 }
 
-// heading renders "TITLE" on the left and dim text on the right.
+// heading renders "TITLE › name › name" on the left (only the first,
+// static segment is upper-cased; resource names keep their case) and dim
+// text on the right.
 func heading(title, right string, w int) string {
-	l := theme.Title.Render(strings.ToUpper(title))
+	first, rest, ok := strings.Cut(title, " › ")
+	title = strings.ToUpper(first)
+	if ok {
+		title += " › " + rest
+	}
+	return headingRaw(title, right, w)
+}
+
+// headingRaw is heading without any case change.
+func headingRaw(title, right string, w int) string {
+	l := theme.Title.Render(title)
 	r := theme.Dim.Render(right)
 	gap := w - lipgloss.Width(l) - lipgloss.Width(r)
 	if gap < 1 {
@@ -34,10 +46,7 @@ func heading(title, right string, w int) string {
 // errorView explains a failure with its kind and a recovery hint.
 func errorView(err error, w int) string {
 	kind := safety.Classify(err)
-	title := "✗ " + string(kind) + " error"
-	if kind == safety.ErrUnknown {
-		title = "✗ error"
-	}
+	title := "✗ " + kindLabel(kind)
 	lines := []string{theme.Bad.Render(title), theme.Body.Render(safety.Describe(err))}
 	if h := safety.Hint(kind); h != "" {
 		lines = append(lines, "", theme.Warn.Render(h))
@@ -153,4 +162,27 @@ func hintLine(hints []core.Hint) string {
 		parts = append(parts, theme.Key.Render(h.Key)+" "+theme.Dim.Render(h.Label))
 	}
 	return strings.Join(parts, "   ")
+}
+
+// tableMouse applies wheel and click to a table whose header is on line top.
+// It returns true when a row was double-clicked (open it).
+func tableMouse(t *components.Table, m core.MouseMsg, top int) bool {
+	switch {
+	case m.WheelUp:
+		t.Scroll(-3)
+	case m.WheelDown:
+		t.Scroll(3)
+	case m.Click:
+		before := t.Cursor()
+		return t.Click(m.Y-top) && m.Double && before == t.Cursor()
+	}
+	return false
+}
+
+// kindLabel renders an error kind as "network error", or just "error".
+func kindLabel(k safety.ErrorKind) string {
+	if k == safety.ErrUnknown || k == "" {
+		return "error"
+	}
+	return string(k) + " error"
 }

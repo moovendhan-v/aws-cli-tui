@@ -125,6 +125,10 @@ func (a *Activity) Update(e *core.Env, msg tea.Msg) tea.Cmd {
 		if !a.history {
 			a.refresh(e)
 		}
+	case core.MouseMsg:
+		if tableMouse(a.table, m, 1) {
+			return a.Update(e, tea.KeyMsg{Type: tea.KeyEnter})
+		}
 	case tea.KeyMsg:
 		row, ok := a.table.Selected()
 		switch m.String() {

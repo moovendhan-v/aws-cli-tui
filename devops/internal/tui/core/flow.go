@@ -1,6 +1,8 @@
 package core
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"devops/internal/commands"
@@ -16,19 +18,36 @@ func (e *Env) OpenCommand(c *commands.Command, prefill map[string]string) tea.Cm
 	if c == nil {
 		return e.Toast("Command is not registered", theme.ToneBad)
 	}
-	if missing(c, prefill) {
-		return e.Open(NewForm(c, prefill, func(vals map[string]string) (tea.Cmd, error) {
+	// "name#label" entries carry display names (e.g. instance name for an ID).
+	display := map[string]string{}
+	values := map[string]string{}
+	for k, v := range prefill {
+		if name, ok := strings.CutSuffix(k, "#label"); ok {
+			display[name] = v
+		} else {
+			values[k] = v
+		}
+	}
+	forceForm := values["#form"] != ""
+	delete(values, "#form")
+	prefill = values
+	if forceForm || missing(c, prefill) {
+		form := NewForm(e, c, prefill, func(vals, display map[string]string) (tea.Cmd, error) {
 			p, err := e.Deps.Runner.Prepare(c, vals, e.Ctx())
 			if err != nil {
 				return nil, err
 			}
+			p.Display = display
 			return e.confirm(p), nil
-		}))
+		})
+		form.setLabels(display)
+		return tea.Sequence(e.Open(form), form.ensure(e))
 	}
 	p, err := e.Deps.Runner.Prepare(c, prefill, e.Ctx())
 	if err != nil {
 		return e.Toast(err.Error(), theme.ToneBad)
 	}
+	p.Display = display
 	return e.confirm(p)
 }
 
@@ -57,8 +76,10 @@ func missing(c *commands.Command, prefill map[string]string) bool {
 func (e *Env) confirm(p *commands.Prepared) tea.Cmd {
 	interactive := p.Cmd.Execution.Type == commands.TypeInteractive
 	mutating := p.Cmd.Risk != safety.ReadOnly
+	billed := e.Deps.Registry.BilledNote(p.Cmd)
 	prod := e.Deps.Production.Is(p.Spec.Ctx.Profile, p.Spec.Ctx.AccountID)
-	need := interactive || (mutating && (e.Deps.Config.Execution.ConfirmMutations || prod))
+	need := interactive || (mutating && (e.Deps.Config.Execution.ConfirmMutations || prod)) ||
+		(billed != "" && e.Deps.Config.Limits.ConfirmBilled)
 	if !need {
 		return e.launch(p)
 	}
@@ -66,28 +87,50 @@ func (e *Env) confirm(p *commands.Prepared) tea.Cmd {
 	if prod && mutating && !interactive {
 		require = p.Spec.Ctx.ProfileLabel()
 	}
-	return e.Open(NewConfirm(p, prod, require, func() tea.Cmd { return e.launch(p) }))
+	c := NewConfirm(p, prod, require, func() tea.Cmd { return e.launch(p) })
+	c.billed = billed
+	if interactive {
+		c.fullScreen = func() tea.Cmd { return e.launchFullScreen(p) }
+	}
+	return e.Open(c)
 }
 
 func (e *Env) launch(p *commands.Prepared) tea.Cmd {
 	if p.Cmd.Execution.Type == commands.TypeInteractive {
-		cmd, job, err := e.Deps.Runner.Interactive(p)
-		if err != nil {
-			return e.Toast(err.Error(), theme.ToneBad)
+		if e.Deps.Config.UI.EmbeddedSessions {
+			return Msg(OpenTerminalMsg{Prepared: p})
 		}
-		return tea.ExecProcess(cmd, func(err error) tea.Msg {
-			code := 0
-			if cmd.ProcessState != nil {
-				code = cmd.ProcessState.ExitCode()
-			}
-			e.Deps.Exec.EndInteractive(job, err, code)
-			return InteractiveDoneMsg{Job: job, Err: err}
-		})
+		return e.launchFullScreen(p)
 	}
+	return e.launchJob(p)
+}
+
+// launchFullScreen hands the whole terminal to an interactive command.
+func (e *Env) launchFullScreen(p *commands.Prepared) tea.Cmd {
+	cmd, job, err := e.Deps.Runner.Interactive(p)
+	if err != nil {
+		return e.Toast(err.Error(), theme.ToneBad)
+	}
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		code := 0
+		if cmd.ProcessState != nil {
+			code = cmd.ProcessState.ExitCode()
+		}
+		e.Deps.Exec.EndInteractive(job, err, code)
+		return InteractiveDoneMsg{Job: job, Err: err}
+	})
+}
+
+func (e *Env) launchJob(p *commands.Prepared) tea.Cmd {
 	job, done := e.Deps.Runner.Start(p, e.Session)
+	gen := e.Gen
 	return tea.Batch(e.Open(NewOutput(job)), func() tea.Msg {
 		d := <-done
-		return ResultMsg{Screen: "", Key: "command", Gen: e.Gen, Job: d.Job, Value: d.Result, Err: d.Err}
+		if p.Cmd.Risk != safety.ReadOnly {
+			// The change may affect anything cached for this context.
+			e.Deps.Cache.InvalidateContext(p.Spec.Ctx.Profile, p.Spec.Ctx.Region)
+		}
+		return ResultMsg{Screen: "", Key: "command", Gen: gen, Job: d.Job, Value: d.Result, Err: d.Err}
 	})
 }
 

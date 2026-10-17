@@ -81,3 +81,19 @@ func Bytes(n int64) string {
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
 }
+
+// Wrap soft-wraps styled text to w cells, breaking long words when needed.
+func Wrap(s string, w int) string {
+	if w <= 0 {
+		return s
+	}
+	return ansi.Wrap(s, w, " -/,:")
+}
+
+// WrapLines wraps each line and returns the visual lines.
+func WrapLines(s string, w int) []string {
+	return strings.Split(Wrap(s, w), "\n")
+}
+
+// Strip removes ANSI styling.
+func Strip(s string) string { return ansi.Strip(s) }

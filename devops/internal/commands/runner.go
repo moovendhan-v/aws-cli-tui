@@ -16,10 +16,12 @@ import (
 type Prepared struct {
 	Cmd    *Command
 	Values map[string]string
-	Spec   executor.Spec
-	Argv   []string    // process / interactive
-	Steps  []*Prepared // workflow
-	cont   []bool
+	// Display holds human labels for values (e.g. instance name for an ID).
+	Display map[string]string
+	Spec    executor.Spec
+	Argv    []string    // process / interactive
+	Steps   []*Prepared // workflow
+	cont    []bool
 }
 
 // Target lists the parameter values for confirmation dialogs.
@@ -27,6 +29,9 @@ func (p *Prepared) Target() [][2]string {
 	var out [][2]string
 	for _, prm := range p.Cmd.Parameters {
 		if v, ok := p.Values[prm.Name]; ok {
+			if l := p.Display[prm.Name]; l != "" && l != v {
+				v = l + " (" + v + ")"
+			}
 			out = append(out, [2]string{prm.Name, v})
 		}
 	}
@@ -126,6 +131,7 @@ func (r *Runner) run(ctx context.Context, j *executor.Job, p *Prepared, s *auth.
 		if err == nil {
 			j.WriteValue(res)
 		}
+		j.AddResult(p.Cmd.Name, res, err)
 		return res, err
 	case TypeProcess:
 		return nil, executor.RunProcess(ctx, j, p.Argv)

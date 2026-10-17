@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	sdk "github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 
 	"devops/internal/aws/auth"
 )
@@ -36,20 +37,41 @@ func List(ctx context.Context, s *auth.Session) ([]Instance, error) {
 			return nil, err
 		}
 		for _, d := range page.DBInstances {
-			i := Instance{
-				ID: aws.ToString(d.DBInstanceIdentifier), Engine: aws.ToString(d.Engine),
-				Version: aws.ToString(d.EngineVersion), Status: aws.ToString(d.DBInstanceStatus),
-				Class: aws.ToString(d.DBInstanceClass), AZ: aws.ToString(d.AvailabilityZone),
-				Cluster: aws.ToString(d.DBClusterIdentifier),
-				MultiAZ: aws.ToBool(d.MultiAZ), Public: aws.ToBool(d.PubliclyAccessible), Encrypted: aws.ToBool(d.StorageEncrypted),
-			}
-			if d.Endpoint != nil {
-				i.Endpoint = aws.ToString(d.Endpoint.Address)
-				i.Port = aws.ToInt32(d.Endpoint.Port)
-			}
-			out = append(out, i)
+			out = append(out, convert(d))
 		}
 	}
 	sort.Slice(out, func(a, b int) bool { return out[a].ID < out[b].ID })
 	return out, nil
+}
+
+// ListPage returns up to 100 DB instances per page.
+func ListPage(ctx context.Context, s *auth.Session, marker string) ([]Instance, string, error) {
+	in := &sdk.DescribeDBInstancesInput{MaxRecords: aws.Int32(100)}
+	if marker != "" {
+		in.Marker = aws.String(marker)
+	}
+	page, err := s.RDS().DescribeDBInstances(ctx, in)
+	if err != nil {
+		return nil, "", err
+	}
+	var out []Instance
+	for _, d := range page.DBInstances {
+		out = append(out, convert(d))
+	}
+	return out, aws.ToString(page.Marker), nil
+}
+
+func convert(d types.DBInstance) Instance {
+	i := Instance{
+		ID: aws.ToString(d.DBInstanceIdentifier), Engine: aws.ToString(d.Engine),
+		Version: aws.ToString(d.EngineVersion), Status: aws.ToString(d.DBInstanceStatus),
+		Class: aws.ToString(d.DBInstanceClass), AZ: aws.ToString(d.AvailabilityZone),
+		Cluster: aws.ToString(d.DBClusterIdentifier),
+		MultiAZ: aws.ToBool(d.MultiAZ), Public: aws.ToBool(d.PubliclyAccessible), Encrypted: aws.ToBool(d.StorageEncrypted),
+	}
+	if d.Endpoint != nil {
+		i.Endpoint = aws.ToString(d.Endpoint.Address)
+		i.Port = aws.ToInt32(d.Endpoint.Port)
+	}
+	return i
 }

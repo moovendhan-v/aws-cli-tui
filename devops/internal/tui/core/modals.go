@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sahilm/fuzzy"
 
 	"devops/internal/commands"
 	"devops/internal/executor"
@@ -36,6 +35,7 @@ type PickItem struct {
 }
 
 type Picker struct {
+	off      int
 	title    string
 	items    []PickItem
 	view     []int
@@ -66,18 +66,29 @@ func (p *Picker) filter() {
 			p.view = append(p.view, i)
 		}
 	} else {
-		src := make([]string, len(p.items))
+		opts := make([]Option, len(p.items))
 		for i, it := range p.items {
-			src[i] = it.Label + " " + it.Detail
+			opts[i] = Option{Value: it.Value, Label: it.Label, Detail: it.Detail}
 		}
-		for _, m := range fuzzy.Find(q, src) {
-			p.view = append(p.view, m.Index)
-		}
+		p.view = append(p.view, RankOptions(opts, q)...)
 	}
 	p.cursor = 0
 }
 
 func (p *Picker) Update(e *Env, msg tea.Msg) (bool, tea.Cmd) {
+	if mm, ok := msg.(MouseMsg); ok {
+		switch {
+		case mm.WheelUp:
+			p.cursor = max(0, p.cursor-1)
+		case mm.WheelDown:
+			p.cursor = min(len(p.view)-1, p.cursor+1)
+		case mm.Click:
+			if i := p.off + mm.Y - 2; mm.Y >= 2 && i >= 0 && i < len(p.view) {
+				return true, p.onSelect(p.items[p.view[i]])
+			}
+		}
+		return false, nil
+	}
 	k, ok := msg.(tea.KeyMsg)
 	if !ok {
 		return false, nil
@@ -116,6 +127,7 @@ func (p *Picker) View(e *Env, w, h int) string {
 	if p.cursor >= rows {
 		off = p.cursor - rows + 1
 	}
+	p.off = off
 	for i := off; i < len(p.view) && i < off+rows; i++ {
 		it := p.items[p.view[i]]
 		label := components.Pad(it.Label, w/2)
@@ -136,11 +148,13 @@ func (p *Picker) View(e *Env, w, h int) string {
 // ───────────────────────────── Confirm ─────────────────────────────
 
 type Confirm struct {
-	p       *commands.Prepared
-	prod    bool
-	require string
-	input   textinput.Model
-	ok      func() tea.Cmd
+	billed     string
+	fullScreen func() tea.Cmd // interactive only: run outside the layout
+	p          *commands.Prepared
+	prod       bool
+	require    string
+	input      textinput.Model
+	ok         func() tea.Cmd
 }
 
 func NewConfirm(p *commands.Prepared, prod bool, require string, ok func() tea.Cmd) *Confirm {
@@ -155,6 +169,9 @@ func NewConfirm(p *commands.Prepared, prod bool, require string, ok func() tea.C
 func (c *Confirm) Title() string {
 	if c.p.Cmd.Execution.Type == commands.TypeInteractive {
 		return "Open interactive session?"
+	}
+	if c.p.Cmd.Risk == safety.ReadOnly && c.billed != "" {
+		return "This action is billed"
 	}
 	return "Confirm " + c.p.Cmd.Risk.Label() + " action"
 }
@@ -177,6 +194,10 @@ func (c *Confirm) Update(e *Env, msg tea.Msg) (bool, tea.Cmd) {
 	}
 	if c.require == "" {
 		switch k.String() {
+		case "f", "F":
+			if c.fullScreen != nil {
+				return true, c.fullScreen()
+			}
 		case "y", "Y":
 			return true, c.ok()
 		case "n", "N", "q":
@@ -212,6 +233,9 @@ func (c *Confirm) View(e *Env, w, h int) string {
 		risk = theme.Bad.Render(c.p.Cmd.Risk.Label())
 	}
 	lines = append(lines, kv("Risk", risk))
+	if c.billed != "" {
+		lines = append(lines, kv("Cost", theme.Warn.Render("$ "+c.billed)))
+	}
 	for _, t := range c.p.Target() {
 		lines = append(lines, kv(t[0], theme.Body.Render(t[1])))
 	}
@@ -223,136 +247,26 @@ func (c *Confirm) View(e *Env, w, h int) string {
 		lines = append(lines, theme.Warn.Render(fmt.Sprintf("Type %q to confirm:", c.require)),
 			theme.Prompt.Render("> ")+c.input.View(), "", theme.Dim.Render("enter confirm · esc cancel"))
 	} else {
-		lines = append(lines, theme.Key.Render("y")+theme.Dim.Render(" confirm   ")+theme.Key.Render("n/esc")+theme.Dim.Render(" cancel"))
+		keys := theme.Key.Render("y") + theme.Dim.Render(" confirm   ")
+		if c.fullScreen != nil {
+			keys = theme.Key.Render("y") + theme.Dim.Render(" open in panel   ") + theme.Key.Render("f") + theme.Dim.Render(" full screen   ")
+		}
+		lines = append(lines, keys+theme.Key.Render("n/esc")+theme.Dim.Render(" cancel"))
 	}
 	return strings.Join(lines, "\n")
-}
-
-// ───────────────────────────── Form ─────────────────────────────
-
-type Form struct {
-	cmd    *commands.Command
-	inputs []textinput.Model
-	focus  int
-	err    string
-	submit func(map[string]string) (tea.Cmd, error)
-}
-
-func NewForm(c *commands.Command, prefill map[string]string, submit func(map[string]string) (tea.Cmd, error)) *Form {
-	f := &Form{cmd: c, submit: submit}
-	for _, p := range c.Parameters {
-		in := newInput(placeholder(p))
-		if v := prefill[p.Name]; v != "" {
-			in.SetValue(v)
-		}
-		f.inputs = append(f.inputs, in)
-	}
-	// Focus the first empty required field.
-	for i, p := range c.Parameters {
-		if p.Required && f.inputs[i].Value() == "" {
-			f.focus = i
-			break
-		}
-	}
-	f.inputs[f.focus].Focus()
-	return f
-}
-
-func placeholder(p commands.Param) string {
-	switch {
-	case p.Default != "":
-		return p.Default
-	case len(p.Options) > 0:
-		return strings.Join(p.Options, " | ")
-	case p.Description != "":
-		return p.Description
-	}
-	return p.Type
-}
-
-func (f *Form) Title() string { return f.cmd.Name }
-
-func (f *Form) Size(mw, mh int) (int, int) { return min(mw, 84), min(mh, 9+len(f.inputs)*2) }
-
-func (f *Form) move(d int) {
-	f.inputs[f.focus].Blur()
-	f.focus = (f.focus + d + len(f.inputs)) % len(f.inputs)
-	f.inputs[f.focus].Focus()
-}
-
-func (f *Form) Update(e *Env, msg tea.Msg) (bool, tea.Cmd) {
-	k, ok := msg.(tea.KeyMsg)
-	if !ok {
-		return false, nil
-	}
-	switch k.String() {
-	case "esc":
-		return true, nil
-	case "tab", "down":
-		f.move(1)
-		return false, nil
-	case "shift+tab", "up":
-		f.move(-1)
-		return false, nil
-	case "enter":
-		vals := map[string]string{}
-		for i, p := range f.cmd.Parameters {
-			vals[p.Name] = f.inputs[i].Value()
-		}
-		cmd, err := f.submit(vals)
-		if err != nil {
-			f.err = err.Error()
-			return false, nil
-		}
-		return true, cmd
-	}
-	var cmd tea.Cmd
-	f.inputs[f.focus], cmd = f.inputs[f.focus].Update(msg)
-	f.err = ""
-	return false, cmd
-}
-
-func (f *Form) View(e *Env, w, h int) string {
-	var b strings.Builder
-	b.WriteString(theme.Dim.Render(f.cmd.Description) + "\n")
-	ctx := e.Ctx()
-	b.WriteString(theme.Dim.Render(fmt.Sprintf("runs in %s · %s · %s", ctx.ProfileLabel(), ctx.Region, f.cmd.Risk.Label())) + "\n")
-	labelW := 0
-	for _, p := range f.cmd.Parameters {
-		labelW = max(labelW, len(p.Name)+2)
-	}
-	for i, p := range f.cmd.Parameters {
-		name := p.Name
-		if p.Required {
-			name += "*"
-		}
-		style := theme.Dim
-		marker := "  "
-		if i == f.focus {
-			style, marker = theme.Title, theme.Prompt.Render("› ")
-		}
-		f.inputs[i].Width = max(10, w-labelW-4)
-		b.WriteString("\n" + marker + style.Render(components.Pad(name, labelW)) + f.inputs[i].View())
-		if i == f.focus && p.Description != "" && p.Description != f.inputs[i].Placeholder {
-			b.WriteString("\n" + strings.Repeat(" ", labelW+2) + theme.Dim.Render(p.Description))
-		}
-	}
-	b.WriteString("\n\n")
-	if f.err != "" {
-		b.WriteString(theme.Bad.Render(strings.ReplaceAll(f.err, "\n", "; ")) + "\n")
-	}
-	b.WriteString(theme.Dim.Render("tab next · enter run · esc cancel   * required"))
-	return b.String()
 }
 
 // ───────────────────────────── Output ─────────────────────────────
 
 // Output shows a job's live output. Closing it leaves the job running.
 type Output struct {
-	job    *executor.Job
-	offset int
-	follow bool
-	height int
+	job     *executor.Job
+	offset  int
+	follow  bool
+	height  int
+	wrap    bool
+	wrapSet bool
+	view    string // table, cards, yaml, json or raw
 }
 
 func NewOutput(j *executor.Job) *Output { return &Output{job: j, follow: true} }
@@ -362,6 +276,15 @@ func (o *Output) Title() string { return fmt.Sprintf("#%d %s", o.job.ID, o.job.N
 func (o *Output) Size(mw, mh int) (int, int) { return mw - 4, mh - 2 }
 
 func (o *Output) Update(e *Env, msg tea.Msg) (bool, tea.Cmd) {
+	if mm, ok := msg.(MouseMsg); ok {
+		if mm.WheelUp {
+			o.follow, o.offset = false, max(0, o.offset-3)
+		}
+		if mm.WheelDown {
+			o.offset += 3
+		}
+		return false, nil
+	}
 	k, ok := msg.(tea.KeyMsg)
 	if !ok {
 		return false, nil
@@ -385,6 +308,17 @@ func (o *Output) Update(e *Env, msg tea.Msg) (bool, tea.Cmd) {
 		o.follow, o.offset = false, 0
 	case "G", "end":
 		o.follow = true
+	case "w":
+		o.wrap = !o.wrap
+	case "v":
+		views := append(append([]string{}, components.ResultViews...), "raw")
+		for i, v := range views {
+			if v == o.view {
+				o.view = views[(i+1)%len(views)]
+				break
+			}
+		}
+		o.offset, o.follow = 0, false
 	case "x":
 		if e.Deps.Exec.Cancel(o.job.ID) {
 			return false, e.Toast(fmt.Sprintf("Cancelling #%d…", o.job.ID), theme.ToneWarn)
@@ -398,7 +332,43 @@ func (o *Output) View(e *Env, w, h int) string {
 	head := JobHeader(e, v)
 	body := h - 3
 	o.height = body
-	lines := o.job.Lines(0)
+	if !o.wrapSet {
+		o.wrap, o.wrapSet = e.Deps.Config.UI.Wrap, true
+		o.view = e.Deps.Config.UI.OutputFormat
+	}
+	raw := o.job.Lines(0)
+	results := o.job.Results()
+	var lines []string
+	if o.view != "raw" && len(results) > 0 {
+		for _, r := range results {
+			if len(results) > 1 {
+				lines = append(lines, theme.Title.Render("━━ "+r.Title))
+			}
+			if r.Err != nil {
+				lines = append(lines, theme.Bad.Render("✗ "+safety.Describe(r.Err)))
+			} else {
+				lines = append(lines, components.RenderResult(r.Value, o.view, w)...)
+			}
+			if len(results) > 1 {
+				lines = append(lines, "")
+			}
+		}
+	} else {
+		for _, l := range raw {
+			lines = append(lines, colorLine(l))
+		}
+	}
+	if o.wrap && o.view != "table" {
+		wrapped := make([]string, 0, len(lines))
+		for _, l := range lines {
+			wrapped = append(wrapped, components.WrapLines(l, w)...)
+		}
+		lines = wrapped
+	} else {
+		for i, l := range lines {
+			lines[i] = components.Truncate(l, w)
+		}
+	}
 	maxOff := max(0, len(lines)-body)
 	if o.follow || o.offset > maxOff {
 		o.offset = maxOff
@@ -410,7 +380,7 @@ func (o *Output) View(e *Env, w, h int) string {
 	b.WriteString(head + "\n" + theme.Dim.Render(strings.Repeat("─", w)) + "\n")
 	end := min(len(lines), o.offset+body)
 	for i := o.offset; i < end; i++ {
-		b.WriteString(colorLine(lines[i]) + "\n")
+		b.WriteString(lines[i] + "\n")
 	}
 	if len(lines) == 0 {
 		if v.Status.Done() {
@@ -426,7 +396,11 @@ func (o *Output) View(e *Env, w, h int) string {
 			b.WriteString(wrap.Inherit(theme.Warn).Render(hint) + "\n")
 		}
 	}
-	foot := fmt.Sprintf("↑↓ scroll · G follow · x cancel · esc close   %d lines", len(lines))
+	viewName := "raw"
+	if len(results) > 0 {
+		viewName = o.view
+	}
+	foot := fmt.Sprintf("view: %s (v) · ↑↓ scroll · G follow · w wrap · x cancel · esc close   %d lines", viewName, len(lines))
 	return components.Fit(b.String(), w, h-1) + "\n" + theme.Dim.Render(foot)
 }
 
@@ -498,6 +472,15 @@ func (t *Text) Size(mw, mh int) (int, int) {
 }
 
 func (t *Text) Update(e *Env, msg tea.Msg) (bool, tea.Cmd) {
+	if mm, ok := msg.(MouseMsg); ok {
+		if mm.WheelUp {
+			t.offset = max(0, t.offset-3)
+		}
+		if mm.WheelDown {
+			t.offset = min(max(0, len(t.lines)-1), t.offset+3)
+		}
+		return false, nil
+	}
 	if k, ok := msg.(tea.KeyMsg); ok {
 		switch k.String() {
 		case "esc", "q", "enter", "?":

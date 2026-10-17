@@ -1,0 +1,10 @@
+commands:
+  - id: s3.bucket.security
+    name: Check Bucket Security
+    category: S3
+    description: Public access block and default encryption for a bucket
+    tags: [s3, bucket, public, encryption, security, exposure]
+    execution: { type: aws_sdk, service: s3, operation: GetPublicAccessBlock }
+    parameters:
+      - { name: bucket, type: resource, resource: s3_bucket, required: true }
+    risk: read_only

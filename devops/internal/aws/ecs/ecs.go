@@ -28,6 +28,7 @@ type Service struct {
 
 type Container struct {
 	Name, Status, Health, Reason string
+	RuntimeID, Image             string
 	ExitCode                     *int32
 }
 
@@ -159,6 +160,7 @@ func convertTask(t types.Task) Task {
 		o.Containers = append(o.Containers, Container{
 			Name: aws.ToString(c.Name), Status: aws.ToString(c.LastStatus), Health: string(c.HealthStatus),
 			Reason: aws.ToString(c.Reason), ExitCode: c.ExitCode,
+			RuntimeID: aws.ToString(c.RuntimeId), Image: aws.ToString(c.Image),
 		})
 	}
 	return o
@@ -174,4 +176,54 @@ func chunks(s []string, n int) [][]string {
 		s = s[k:]
 	}
 	return out
+}
+
+// ListClustersPage lists up to 100 clusters per page with details.
+func ListClustersPage(ctx context.Context, s *auth.Session, token string) ([]Cluster, string, error) {
+	in := &sdk.ListClustersInput{MaxResults: aws.Int32(100)}
+	if token != "" {
+		in.NextToken = aws.String(token)
+	}
+	page, err := s.ECS().ListClusters(ctx, in)
+	if err != nil || len(page.ClusterArns) == 0 {
+		return nil, "", err
+	}
+	res, err := s.ECS().DescribeClusters(ctx, &sdk.DescribeClustersInput{Clusters: page.ClusterArns})
+	if err != nil {
+		return nil, "", err
+	}
+	out := make([]Cluster, 0, len(res.Clusters))
+	for _, c := range res.Clusters {
+		out = append(out, Cluster{
+			Name: aws.ToString(c.ClusterName), ARN: aws.ToString(c.ClusterArn), Status: aws.ToString(c.Status),
+			Running: c.RunningTasksCount, Pending: c.PendingTasksCount,
+			Services: c.ActiveServicesCount, Hosts: c.RegisteredContainerInstancesCount,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, aws.ToString(page.NextToken), nil
+}
+
+// ListServicesPage lists up to 50 services per page with details.
+func ListServicesPage(ctx context.Context, s *auth.Session, cluster, token string) ([]Service, string, error) {
+	in := &sdk.ListServicesInput{Cluster: aws.String(cluster), MaxResults: aws.Int32(50)}
+	if token != "" {
+		in.NextToken = aws.String(token)
+	}
+	page, err := s.ECS().ListServices(ctx, in)
+	if err != nil {
+		return nil, "", err
+	}
+	var out []Service
+	for _, chunk := range chunks(page.ServiceArns, 10) {
+		res, err := s.ECS().DescribeServices(ctx, &sdk.DescribeServicesInput{Cluster: aws.String(cluster), Services: chunk})
+		if err != nil {
+			return nil, "", err
+		}
+		for _, sv := range res.Services {
+			out = append(out, convertService(sv))
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, aws.ToString(page.NextToken), nil
 }

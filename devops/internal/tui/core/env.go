@@ -3,12 +3,15 @@
 package core
 
 import (
+	"context"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"devops/internal/app"
 	"devops/internal/aws/auth"
+	"devops/internal/cache"
+	"devops/internal/commands"
 	"devops/internal/executor"
 	"devops/internal/tui/theme"
 )
@@ -49,6 +52,10 @@ type (
 		Job         *executor.Job
 		Value       any
 		Err         error
+		// CachedAt is set when Value came from the cache instead of AWS;
+		// Refreshing means a background refresh for it is in flight.
+		CachedAt   time.Time
+		Refreshing bool
 	}
 	TickMsg     struct{ Time time.Time }
 	NavigateMsg struct{ Screen, Query string }
@@ -62,7 +69,17 @@ type (
 		Err error
 	}
 	SwitchContextMsg struct{ Profile, Region string }
-	IdentityMsg      struct {
+	// OpenTerminalMsg asks the shell to start an embedded interactive session.
+	OpenTerminalMsg struct{ Prepared *commands.Prepared }
+	// FocusMsg moves keyboard focus ("nav" or "workspace").
+	FocusMsg struct{ Area string }
+	// MouseMsg is a mouse event translated to workspace-content coordinates.
+	MouseMsg struct {
+		X, Y               int
+		Click, Double      bool
+		WheelUp, WheelDown bool
+	}
+	IdentityMsg struct {
 		Gen          int
 		Account, ARN string
 		Err          error
@@ -101,6 +118,36 @@ func (e *Env) Prod() bool {
 func (e *Env) Run(screen, key string, spec executor.Spec, fn executor.Func) tea.Cmd {
 	_, cmd := e.RunJob(screen, key, spec, fn)
 	return cmd
+}
+
+// CacheKey builds a cache key bound to the active profile/region.
+func (e *Env) CacheKey(kind string, parts ...string) string {
+	return cache.Key(e.Session.Ctx.Profile, e.Session.Ctx.Region, kind, parts...)
+}
+
+// Cached serves a result from cache when fresh. When the entry is stale it
+// returns the cached value immediately and refreshes in the background; on a
+// miss, or when force is set (the user pressed r), it fetches from AWS.
+// Successful fetches are written back to the cache.
+func (e *Env) Cached(screen, key, cacheKey string, force bool, spec executor.Spec, fn executor.Func) tea.Cmd {
+	entry, ok, fresh := e.Deps.Cache.Get(cacheKey)
+	gen := e.Gen
+	var cmds []tea.Cmd
+	if ok && !force {
+		cmds = append(cmds, Msg(ResultMsg{Screen: screen, Key: key, Gen: gen, Value: entry.Value, CachedAt: entry.At, Refreshing: !fresh}))
+		if fresh {
+			return cmds[0]
+		}
+	}
+	store := e.Deps.Cache
+	cmds = append(cmds, e.Run(screen, key, spec, func(ctx context.Context, j *executor.Job) (any, error) {
+		v, err := fn(ctx, j)
+		if err == nil {
+			store.Put(cacheKey, v)
+		}
+		return v, err
+	}))
+	return tea.Sequence(cmds...)
 }
 
 // RunJob is Run that also returns the job (for live output such as log tails).

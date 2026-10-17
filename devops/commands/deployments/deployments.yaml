@@ -6,7 +6,7 @@ commands:
     tags: [cloudformation, stack, deploy, rollback, events]
     execution: { type: aws_sdk, service: cloudformation, operation: DescribeStackEvents }
     parameters:
-      - { name: stack_name, type: string, required: true }
+      - { name: stack_name, type: resource, resource: cfn_stack, required: true }
       - { name: failed_only, type: bool, default: 'false' }
     risk: read_only
 
@@ -17,6 +17,6 @@ commands:
     tags: [cloudformation, failed, rollback, deployment, errors, why]
     execution: { type: aws_sdk, service: cloudformation, operation: DescribeStackEvents }
     parameters:
-      - { name: stack_name, type: string, required: true }
+      - { name: stack_name, type: resource, resource: cfn_stack, required: true }
       - { name: failed_only, type: bool, default: 'true' }
     risk: read_only

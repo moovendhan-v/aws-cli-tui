@@ -194,6 +194,26 @@ func (r *Registry) Finalize() {
 
 func (r *Registry) Get(id string) *Command { return r.byID[id] }
 
+// BilledNote explains why a command costs money to run, or "" if it calls
+// only operations that are not billed per request.
+func (r *Registry) BilledNote(c *Command) string {
+	switch c.Execution.Type {
+	case TypeSDK:
+		if op, ok := r.ops.Get(c.Execution.Service, c.Execution.Operation); ok {
+			return op.Billed
+		}
+	case TypeWorkflow:
+		for _, st := range c.Execution.Steps {
+			if sub := r.byID[st.Command]; sub != nil {
+				if n := r.BilledNote(sub); n != "" {
+					return n
+				}
+			}
+		}
+	}
+	return ""
+}
+
 func (r *Registry) All() []*Command { return r.ordered }
 
 func (r *Registry) Ops() *ops.Table { return r.ops }

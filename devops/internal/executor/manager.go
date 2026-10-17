@@ -67,6 +67,28 @@ type Job struct {
 	out      *ring
 	cancel   context.CancelFunc
 	userStop bool
+	results  []Result
+}
+
+// Result is a structured value produced by a job (one per workflow step).
+type Result struct {
+	Title string
+	Value any
+	Err   error
+}
+
+// AddResult records a structured result for table/cards/YAML views.
+func (j *Job) AddResult(title string, v any, err error) {
+	j.mu.Lock()
+	j.results = append(j.results, Result{Title: title, Value: v, Err: err})
+	j.mu.Unlock()
+}
+
+// Results returns the structured results recorded so far.
+func (j *Job) Results() []Result {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return append([]Result(nil), j.results...)
 }
 
 // View is an immutable snapshot of a job.

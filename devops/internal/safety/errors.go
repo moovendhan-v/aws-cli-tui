@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/aws/smithy-go"
+
+	"devops/internal/aws/meter"
 )
 
 type ErrorKind string
@@ -21,6 +23,7 @@ const (
 	ErrCancelled  ErrorKind = "cancelled"
 	ErrValidation ErrorKind = "validation"
 	ErrConfig     ErrorKind = "configuration"
+	ErrBudget     ErrorKind = "API budget"
 	ErrUnknown    ErrorKind = "error"
 )
 
@@ -43,6 +46,9 @@ func Classify(err error) ErrorKind {
 	}
 	if errors.Is(err, context.Canceled) {
 		return ErrCancelled
+	}
+	if errors.Is(err, meter.ErrBudget) {
+		return ErrBudget
 	}
 	var ae smithy.APIError
 	if errors.As(err, &ae) {
@@ -100,6 +106,8 @@ func Hint(k ErrorKind) string {
 		return "The operation timed out. AWS-side work may still be in progress."
 	case ErrValidation:
 		return "AWS rejected the request parameters."
+	case ErrBudget:
+		return "This session reached limits.max_api_calls. Raise it in Settings, or restart the tool."
 	case ErrConfig:
 		return "This profile's entry in ~/.aws/config is incomplete or invalid. Fix it, or press Ctrl+P to choose another profile."
 	}

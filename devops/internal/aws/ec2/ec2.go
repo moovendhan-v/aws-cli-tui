@@ -102,3 +102,22 @@ func convert(in types.Instance) Instance {
 	i.Name = i.Tags["Name"]
 	return i
 }
+
+// ListPage returns one page (up to 100 instances) and the next token ("" = done).
+func ListPage(ctx context.Context, s *auth.Session, token string) ([]Instance, string, error) {
+	in := &sdk.DescribeInstancesInput{MaxResults: aws.Int32(100)}
+	if token != "" {
+		in.NextToken = aws.String(token)
+	}
+	page, err := s.EC2().DescribeInstances(ctx, in)
+	if err != nil {
+		return nil, "", err
+	}
+	var out []Instance
+	for _, r := range page.Reservations {
+		for _, i := range r.Instances {
+			out = append(out, convert(i))
+		}
+	}
+	return out, aws.ToString(page.NextToken), nil
+}

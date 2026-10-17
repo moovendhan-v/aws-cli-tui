@@ -36,6 +36,7 @@ type paletteItem struct {
 type palette struct {
 	items  []paletteItem
 	cursor int
+	hit    map[int]int // rendered line → item index (mouse)
 }
 
 func (p *palette) search(e *core.Env, q string) {
@@ -48,14 +49,14 @@ func (p *palette) search(e *core.Env, q string) {
 		for _, v := range e.Deps.Exec.Views() {
 			if c := e.Deps.Registry.Get(v.CommandID); c != nil && !seen[c.ID] && len(seen) < 5 {
 				seen[c.ID] = true
-				p.items = append(p.items, actionItem(c, "recent"))
+				p.items = append(p.items, actionItem(c, "recent", e.Deps.Registry.BilledNote(c) != ""))
 			}
 		}
 		if e.Deps.Store != nil {
 			for id := range e.Deps.Store.Favorites() {
 				if c := e.Deps.Registry.Get(id); c != nil && !seen[id] {
 					seen[id] = true
-					p.items = append(p.items, actionItem(c, "★ favorite"))
+					p.items = append(p.items, actionItem(c, "★ favorite", e.Deps.Registry.BilledNote(c) != ""))
 				}
 			}
 		}
@@ -66,7 +67,7 @@ func (p *palette) search(e *core.Env, q string) {
 	}
 
 	for _, m := range e.Deps.Registry.Search(q, 8) {
-		p.items = append(p.items, actionItem(m.Command, m.Command.Category))
+		p.items = append(p.items, actionItem(m.Command, m.Command.Category, e.Deps.Registry.BilledNote(m.Command) != ""))
 	}
 
 	lq := strings.ToLower(q)
@@ -101,12 +102,16 @@ func (p *palette) search(e *core.Env, q string) {
 	}
 }
 
-func actionItem(c *commands.Command, detail string) paletteItem {
+func actionItem(c *commands.Command, detail string, billed bool) paletteItem {
 	tone := theme.ToneNormal
 	if c.Risk.Level() > 0 {
 		tone = theme.ToneWarn
 	}
-	return paletteItem{kind: kindAction, label: c.Name, detail: detail + " · " + c.Risk.Label(), cmd: c, tone: tone}
+	risk := c.Risk.Label()
+	if billed {
+		risk += " · $ billed"
+	}
+	return paletteItem{kind: kindAction, label: c.Name, detail: detail + " · " + risk, cmd: c, tone: tone}
 }
 
 func (p *palette) move(d int) {
@@ -144,6 +149,8 @@ func (p *palette) view(e *core.Env, query string, w, h int) string {
 		b.WriteString("\n" + theme.Dim.Render("Search only selects trusted, predefined commands — it never generates new ones."))
 		return b.String()
 	}
+	p.hit = map[int]int{}
+	line := 1 // the title line
 	headers := map[paletteKind]string{kindAction: "ACTIONS", kindNav: "GO TO", kindResource: "RESOURCES"}
 	last := paletteKind(-1)
 	rows := 0
@@ -155,7 +162,10 @@ func (p *palette) view(e *core.Env, query string, w, h int) string {
 			b.WriteString("\n" + theme.Dim.Render(headers[it.kind]) + "\n")
 			last = it.kind
 			rows += 2
+			line += 2
 		}
+		p.hit[line] = i
+		line++
 		icon := map[paletteKind]string{kindAction: "▸", kindNav: "→", kindResource: "◆"}[it.kind]
 		labelW := max(20, w*55/100)
 		if i == p.cursor {

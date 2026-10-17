@@ -14,7 +14,7 @@ commands:
     tags: [target group, alb, health check]
     execution: { type: aws_sdk, service: elbv2, operation: DescribeTargetGroups }
     parameters:
-      - { name: load_balancer_arn, type: string }
+      - { name: load_balancer_arn, type: resource, resource: load_balancer }
     risk: read_only
 
   - id: elb.target-health
@@ -24,7 +24,7 @@ commands:
     tags: [unhealthy, targets, health check, 502, 503, alb, errors]
     execution: { type: aws_sdk, service: elbv2, operation: DescribeTargetHealth }
     parameters:
-      - { name: target_group_arn, type: string, required: true, pattern: 'arn:aws[a-z-]*:elasticloadbalancing:.+' }
+      - { name: target_group_arn, type: resource, resource: target_group, required: true, pattern: 'arn:aws[a-z-]*:elasticloadbalancing:.+' }
     risk: read_only
 
   - id: vpc.list
@@ -42,7 +42,7 @@ commands:
     tags: [subnet, network, az, cidr]
     execution: { type: aws_sdk, service: ec2, operation: DescribeSubnets }
     parameters:
-      - { name: vpc_id, type: string, pattern: 'vpc-[0-9a-f]+' }
+      - { name: vpc_id, type: resource, resource: vpc, pattern: 'vpc-[0-9a-f]+' }
     risk: read_only
 
   - id: vpc.route-tables
@@ -52,5 +52,5 @@ commands:
     tags: [routes, route table, nat, internet, connectivity]
     execution: { type: aws_sdk, service: ec2, operation: DescribeRouteTables }
     parameters:
-      - { name: vpc_id, type: string, pattern: 'vpc-[0-9a-f]+' }
+      - { name: vpc_id, type: resource, resource: vpc, pattern: 'vpc-[0-9a-f]+' }
     risk: read_only

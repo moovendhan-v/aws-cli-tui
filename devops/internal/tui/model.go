@@ -46,6 +46,10 @@ type Model struct {
 	toastTone     theme.Tone
 	toastUntil    time.Time
 	quitArmed     time.Time
+
+	g         geom      // layout of the last frame, for mouse routing
+	drop      *dropdown // sidebar profile/region chooser
+	lastClick clickMemo
 }
 
 func New(d *app.Deps) *Model {
@@ -66,18 +70,22 @@ func New(d *app.Deps) *Model {
 		search: in,
 		focus:  focusNav,
 		screens: map[string]core.Screen{
-			"overview": screens.NewOverview(),
-			"ec2":      screens.NewEC2(),
-			"ecs":      screens.NewResource("ecs", screens.ECSClusters),
-			"rds":      screens.NewResource("rds", screens.RDSInstances),
-			"lambda":   screens.NewResource("lambda", screens.LambdaFunctions),
-			"elb":      screens.NewResource("elb", screens.LoadBalancers),
-			"logs":     screens.NewLogs(),
-			"alarms":   screens.NewResource("alarms", screens.Alarms),
-			"network":  screens.NewResource("network", screens.VPCs),
-			"commands": screens.NewLibrary(),
-			"activity": screens.NewActivity(),
-			"settings": screens.NewSettings(),
+			"overview":  screens.NewOverview(),
+			"ec2":       screens.NewEC2(),
+			"ecs":       screens.NewResource("ecs", screens.ECSClusters),
+			"rds":       screens.NewResource("rds", screens.RDSInstances),
+			"lambda":    screens.NewResource("lambda", screens.LambdaFunctions),
+			"elb":       screens.NewResource("elb", screens.LoadBalancers),
+			"logs":      screens.NewLogs(),
+			"alarms":    screens.NewResource("alarms", screens.Alarms),
+			"network":   screens.NewResource("network", screens.VPCs),
+			"commands":  screens.NewLibrary(),
+			"activity":  screens.NewActivity(),
+			"settings":  screens.NewSettings(),
+			"terminals": screens.NewTerminals(),
+			"pipelines": screens.NewResource("pipelines", screens.Pipelines),
+			"builds":    screens.NewBuilds(),
+			"s3":        screens.NewS3(),
 		},
 	}
 	for _, w := range d.Warnings {
@@ -185,6 +193,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, c)
 		}
 		cmds = append(cmds, m.current().Update(e, msg))
+		if t := m.terminals(); m.current() != core.Screen(t) {
+			cmds = append(cmds, t.Update(e, msg)) // notice sessions that end while hidden
+		}
 		return m, tea.Batch(cmds...)
 
 	case core.ResultMsg:
@@ -211,6 +222,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case core.OpenTerminalMsg:
+		cmd := m.terminals().Open(e, msg.Prepared)
+		m.focus = focusWorkspace
+		return m, tea.Batch(cmd, m.navigateTo("terminals"))
+
+	case core.FocusMsg:
+		if msg.Area == "nav" {
+			m.focus = focusNav
+		} else {
+			m.focus = focusWorkspace
+		}
+		return m, nil
+
 	case core.SwitchContextMsg:
 		return m, m.switchContext(msg.Profile, msg.Region)
 
@@ -229,6 +253,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		return m, m.handleKey(msg)
+
+	case tea.MouseMsg:
+		return m, m.handleMouse(msg)
 	}
 	return m, nil
 }
@@ -264,6 +291,15 @@ func (m *Model) handleResult(r core.ResultMsg) tea.Cmd {
 			} else {
 				m.setToast(fmt.Sprintf("✗ %s %s — Ctrl+J to view", v.Name, v.Status), theme.ToneBad)
 			}
+		default:
+			// Results requested by an open modal (form pickers, previews).
+			if m.modal != nil && r.Gen == e.Gen {
+				closed, cmd := m.modal.Update(e, r)
+				if closed {
+					m.modal = nil
+				}
+				return cmd
+			}
 		}
 		return nil
 	}
@@ -279,8 +315,14 @@ func (m *Model) handleResult(r core.ResultMsg) tea.Cmd {
 func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 	e := m.env
 	key := k.String()
+	// Embedded sessions receive every key (Ctrl+C, Ctrl+R…); Ctrl+] is their menu.
+	if r, ok := m.current().(interface{ RawInput() bool }); ok && r.RawInput() &&
+		m.focus == focusWorkspace && m.modal == nil && m.drop == nil {
+		return m.current().Update(e, k)
+	}
 	if key == "ctrl+c" {
 		e.Deps.Exec.CancelAll()
+		m.terminals().CloseAll()
 		return tea.Quit
 	}
 
@@ -288,6 +330,23 @@ func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 		closed, cmd := m.modal.Update(e, k)
 		if closed {
 			m.modal = nil
+		}
+		return cmd
+	}
+
+	if m.drop != nil {
+		switch key {
+		case "ctrl+p":
+			return m.openDropdown("profile")
+		case "ctrl+r":
+			return m.openDropdown("region")
+		}
+		chosen, closed, cmd := m.drop.update(k)
+		if chosen != nil {
+			return m.chooseDropdown(*chosen)
+		}
+		if closed {
+			m.drop = nil
 		}
 		return cmd
 	}
@@ -304,9 +363,9 @@ func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 	case "ctrl+k":
 		return m.openSearch()
 	case "ctrl+p":
-		return m.profilePicker()
+		return m.openDropdown("profile")
 	case "ctrl+r":
-		return m.regionPicker()
+		return m.openDropdown("region")
 	case "ctrl+j":
 		m.focus = focusWorkspace
 		return m.navigateTo("activity")
@@ -336,6 +395,7 @@ func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 		e.Deps.Exec.CancelAll()
+		m.terminals().CloseAll()
 		return tea.Quit
 	case "esc":
 		if b, ok := scr.(screens.Backer); ok && m.focus == focusWorkspace {
@@ -350,11 +410,9 @@ func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 	if m.focus == focusNav {
 		switch key {
 		case "up", "k":
-			m.navIdx = (m.navIdx - 1 + len(app.Navigation)) % len(app.Navigation)
-			return m.activate()
+			return m.moveNav(-1)
 		case "down", "j":
-			m.navIdx = (m.navIdx + 1) % len(app.Navigation)
-			return m.activate()
+			return m.moveNav(1)
 		case "enter", "right", "l":
 			m.focus = focusWorkspace
 			return nil
@@ -366,6 +424,14 @@ func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 		return nil
 	}
 	return scr.Update(e, k)
+}
+
+func (m *Model) terminals() *screens.Terminals { return m.screens["terminals"].(*screens.Terminals) }
+
+func (m *Model) moveNav(d int) tea.Cmd {
+	n := len(app.Navigation)
+	m.navIdx = (m.navIdx + d + n) % n
+	return m.activate()
 }
 
 func (m *Model) foregroundJobs() int {
@@ -414,38 +480,4 @@ func (m *Model) searchKey(k tea.KeyMsg) tea.Cmd {
 		m.palette.search(m.env, m.search.Value())
 	}
 	return cmd
-}
-
-func (m *Model) profilePicker() tea.Cmd {
-	e := m.env
-	items := make([]core.PickItem, 0, len(e.Deps.Profiles))
-	for _, p := range e.Deps.Profiles {
-		detail := p.Kind()
-		if p.Region != "" {
-			detail += " · " + p.Region
-		}
-		tone := theme.ToneNormal
-		if e.Deps.Production.Is(p.Name, "") {
-			tone, detail = theme.ToneBad, detail+" · PRODUCTION"
-		}
-		items = append(items, core.PickItem{Label: p.Name, Detail: detail, Value: p.Name, Tone: tone})
-	}
-	if len(items) == 0 {
-		return e.Toast("No profiles found in "+profiles.ConfigPath(), theme.ToneWarn)
-	}
-	return e.Open(core.NewPicker("Switch AWS profile", items, e.Ctx().Profile, func(it core.PickItem) tea.Cmd {
-		// Keep an explicitly chosen region only if the user set a default; otherwise use the profile's.
-		return core.Msg(core.SwitchContextMsg{Profile: it.Value, Region: e.Deps.Config.UI.DefaultRegion})
-	}))
-}
-
-func (m *Model) regionPicker() tea.Cmd {
-	e := m.env
-	items := make([]core.PickItem, 0, len(profiles.Regions))
-	for _, r := range profiles.Regions {
-		items = append(items, core.PickItem{Label: r, Value: r})
-	}
-	return e.Open(core.NewPicker("Switch region", items, e.Ctx().Region, func(it core.PickItem) tea.Cmd {
-		return core.Msg(core.SwitchContextMsg{Profile: e.Ctx().Profile, Region: it.Value})
-	}))
 }

@@ -41,6 +41,12 @@ CREATE TABLE IF NOT EXISTS jobs (
 	output      TEXT
 );
 CREATE INDEX IF NOT EXISTS jobs_started ON jobs(started_at);
+CREATE TABLE IF NOT EXISTS recents (
+	kind    TEXT NOT NULL,
+	value   TEXT NOT NULL,
+	used_at INTEGER NOT NULL,
+	PRIMARY KEY (kind, value)
+);
 CREATE TABLE IF NOT EXISTS favorites (
 	command_id TEXT PRIMARY KEY,
 	created_at INTEGER NOT NULL
@@ -248,4 +254,34 @@ func (s *Store) SearchCommands(q string, limit int) ([]string, error) {
 		}
 	}
 	return ids, rows.Err()
+}
+
+// TouchRecent records that value of kind (profile, region, preset…) was used.
+func (s *Store) TouchRecent(kind, value string) error {
+	_, err := s.db.Exec(`INSERT INTO recents (kind, value, used_at) VALUES (?,?,?)
+		ON CONFLICT(kind, value) DO UPDATE SET used_at = excluded.used_at`, kind, value, time.Now().UnixMilli())
+	return err
+}
+
+// Recents returns the most recently used values of a kind.
+func (s *Store) Recents(kind string, limit int) []string {
+	rows, err := s.db.Query(`SELECT value FROM recents WHERE kind = ? ORDER BY used_at DESC LIMIT ?`, kind, limit)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var v string
+		if rows.Scan(&v) == nil {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// DeleteRecent removes one remembered value (used to unpin).
+func (s *Store) DeleteRecent(kind, value string) error {
+	_, err := s.db.Exec(`DELETE FROM recents WHERE kind = ? AND value = ?`, kind, value)
+	return err
 }

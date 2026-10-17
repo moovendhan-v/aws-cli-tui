@@ -27,7 +27,7 @@ func NewLibrary() *Library {
 			components.Column{Title: "Command", Width: 26, Flex: true},
 			components.Column{Title: "Category", Width: 11},
 			components.Column{Title: "Type", Width: 11},
-			components.Column{Title: "Risk", Width: 9},
+			components.Column{Title: "Risk", Width: 11},
 		),
 		filter: newFilter(),
 		favs:   map[string]bool{},
@@ -67,7 +67,7 @@ func (l *Library) rebuild(e *core.Env) {
 		}
 		rows = append(rows, components.Row{Key: c.ID, Data: c, Tone: tone,
 			Search: c.Description + " " + strings.Join(c.Tags, " "),
-			Cells:  []string{star, c.Name, c.Category, c.Execution.Type, c.Risk.Label()}})
+			Cells:  []string{star, c.Name, c.Category, c.Execution.Type, riskCell(e, c)}})
 	}
 	l.table.SetRows(rows)
 }
@@ -88,6 +88,18 @@ func (l *Library) Back(e *core.Env) (bool, tea.Cmd) {
 }
 
 func (l *Library) Update(e *core.Env, msg tea.Msg) tea.Cmd {
+	if mm, ok := msg.(core.MouseMsg); ok {
+		top := 1
+		if l.filter.active || l.filter.value() != "" {
+			top = 2
+		}
+		if tableMouse(l.table, mm, top) {
+			if row, ok := l.table.Selected(); ok {
+				return e.OpenCommand(row.Data.(*commands.Command), nil)
+			}
+		}
+		return nil
+	}
 	m, ok := msg.(tea.KeyMsg)
 	if !ok {
 		return nil
@@ -191,4 +203,12 @@ func commandDetail(c *commands.Command, w int) string {
 	}
 	b.WriteString(theme.Dim.Render("source: " + c.Source))
 	return b.String()
+}
+
+// riskCell renders the risk with a $ badge for billed commands.
+func riskCell(e *core.Env, c *commands.Command) string {
+	if e.Deps.Registry.BilledNote(c) != "" {
+		return c.Risk.Label() + " $"
+	}
+	return c.Risk.Label()
 }

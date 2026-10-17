@@ -32,6 +32,47 @@ type Table struct {
 	offset  int
 	filter  string
 	height  int
+
+	more        bool   // another page exists in AWS
+	loadingMore bool   // a page fetch is in flight
+	spinner     string // current spinner frame for the loading row
+}
+
+// SetMore records pagination state for the trailing status row.
+func (t *Table) SetMore(more, loading bool, spinner string) {
+	t.more, t.loadingMore, t.spinner = more, loading, spinner
+}
+
+func (t *Table) HasMore() bool { return t.more }
+
+// WantsMore reports whether the cursor is near the end of the loaded rows and
+// the next page should be fetched.
+func (t *Table) WantsMore() bool {
+	return t.more && !t.loadingMore && t.filter == "" && t.cursor >= len(t.view)-5
+}
+
+// AppendRows adds a fetched page without moving the cursor.
+func (t *Table) AppendRows(rows []Row) {
+	t.rows = append(t.rows, rows...)
+	t.apply()
+	t.clamp()
+}
+
+// Scroll moves the cursor by n rows (mouse wheel).
+func (t *Table) Scroll(n int) {
+	t.cursor += n
+	t.clamp()
+}
+
+// Click selects the row at line y of the last rendered view (0 = header).
+// It reports whether a row was hit.
+func (t *Table) Click(y int) bool {
+	i := t.offset + y - 1
+	if y < 1 || i < 0 || i >= len(t.view) {
+		return false
+	}
+	t.cursor = i
+	return true
 }
 
 func NewTable(cols ...Column) *Table { return &Table{Columns: cols} }
@@ -151,6 +192,16 @@ func (t *Table) View(w, h int) string {
 	b.WriteString(theme.TableHead.Render(strings.Join(head, " ")))
 
 	body := h - 1
+	status := ""
+	switch {
+	case t.loadingMore:
+		status = theme.Warn.Render("  " + t.spinner + " loading more…")
+	case t.more:
+		status = theme.Dim.Render("  ↓ more available — scroll down to load")
+	}
+	if status != "" {
+		body--
+	}
 	if body <= 0 {
 		return b.String()
 	}
@@ -180,6 +231,9 @@ func (t *Table) View(w, h int) string {
 		} else {
 			b.WriteString(r.Tone.Style().Render(line))
 		}
+	}
+	if status != "" {
+		b.WriteString("\n" + status)
 	}
 	return b.String()
 }
@@ -217,5 +271,9 @@ func (t *Table) Position() string {
 	if len(t.view) == 0 {
 		return "0/0"
 	}
-	return strconv.Itoa(t.cursor+1) + "/" + strconv.Itoa(len(t.view))
+	pos := strconv.Itoa(t.cursor+1) + "/" + strconv.Itoa(len(t.view))
+	if t.more {
+		pos += "+"
+	}
+	return pos
 }

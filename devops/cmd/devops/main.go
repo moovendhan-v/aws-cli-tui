@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"devops/internal/app"
+	"devops/internal/preview"
 	"devops/internal/tui"
 )
 
@@ -18,7 +19,16 @@ func main() {
 	check := flag.Bool("check", false, "validate configuration and command definitions, then exit")
 	profile := flag.String("profile", "", "AWS profile to start with (overrides AWS_PROFILE)")
 	region := flag.String("region", "", "AWS region to start with")
+	showImage := flag.String("show-image", "", "internal: show an image file full screen (used by S3 previews)")
 	flag.Parse()
+
+	if *showImage != "" {
+		if err := preview.Show(*showImage, os.Stdout, os.Stdin); err != nil {
+			fmt.Fprintln(os.Stderr, "devops:", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if *showVersion {
 		fmt.Println("devops", version)

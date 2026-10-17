@@ -29,19 +29,61 @@ func (o *Overview) ID() string      { return "overview" }
 func (o *Overview) Capturing() bool { return false }
 
 func (o *Overview) Hints() []core.Hint {
-	return []core.Hint{{Key: "r", Label: "Refresh"}, {Key: "L", Label: "SSO login"}}
+	return []core.Hint{{Key: "r", Label: "Refresh"}, {Key: "1-9", Label: "Open pin"}, {Key: "L", Label: "SSO login"}}
 }
 
-func (o *Overview) Init(e *core.Env) tea.Cmd {
+// healthStrip summarises the signals that usually mean "look here first".
+func healthStrip(c summary.Summary, w int) string {
+	sig := func(ok bool, warn bool, text string) string {
+		dot := theme.OK.Render("●")
+		switch {
+		case !ok:
+			dot = theme.Bad.Render("●")
+		case warn:
+			dot = theme.Warn.Render("●")
+		}
+		return dot + " " + theme.Body.Render(text)
+	}
+	var parts []string
+	if c.ActiveAlarms.Err == nil {
+		n := c.ActiveAlarms.Value
+		parts = append(parts, sig(n == 0, false, plural(n, "alarm", "alarms")+" firing"))
+	}
+	if c.UnhealthyTargets.Err == nil && c.UnhealthyTargets.Detail != "check disabled (overview.target_health)" {
+		n := c.UnhealthyTargets.Value
+		parts = append(parts, sig(n == 0, false, plural(n, "unhealthy target", "unhealthy targets")))
+	}
+	if c.EC2.Err == nil && c.EC2.Value > 0 {
+		parts = append(parts, sig(true, false, c.EC2.Detail+" of "+fmt.Sprint(c.EC2.Value)+" instances"))
+	}
+	if c.ECS.Err == nil && c.ECS.Value > 0 {
+		parts = append(parts, sig(true, false, c.ECS.Detail))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return theme.Title.Render("HEALTH  ") + components.Truncate(strings.Join(parts, "    "), w-8)
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
+}
+
+func (o *Overview) Init(e *core.Env) tea.Cmd { return o.load(e, false) }
+
+func (o *Overview) load(e *core.Env, force bool) tea.Cmd {
 	if err := e.Session.Ready(); err != nil {
 		return nil
 	}
-	o.loading, o.sum = true, nil
-	s := e.Session
-	return e.Run(o.ID(), "summary",
+	o.loading = true
+	s, th := e.Session, e.Deps.Config.Overview.TargetHealth
+	return e.Cached(o.ID(), "summary", e.CacheKey("summary"), force,
 		executor.Spec{Name: "Load infrastructure summary", Quiet: true, Timeout: 90 * time.Second},
 		func(ctx context.Context, _ *executor.Job) (any, error) {
-			sum := summary.Load(ctx, s)
+			sum := summary.Load(ctx, s, th)
 			return &sum, sum.AllFailed()
 		})
 }
@@ -49,13 +91,22 @@ func (o *Overview) Init(e *core.Env) tea.Cmd {
 func (o *Overview) Update(e *core.Env, msg tea.Msg) tea.Cmd {
 	switch m := msg.(type) {
 	case core.ResultMsg:
-		o.loading = false
+		o.loading = m.Refreshing
 		if v, ok := m.Value.(*summary.Summary); ok {
 			o.sum, o.loadedAt = v, time.Now()
+			if !m.CachedAt.IsZero() {
+				o.loadedAt = m.CachedAt
+			}
 		}
 	case tea.KeyMsg:
 		if m.String() == "r" && !o.loading {
-			return o.Init(e)
+			return o.load(e, true)
+		}
+		if k := m.String(); len(k) == 1 && k[0] >= '1' && k[0] <= '9' {
+			pins := e.Pins()
+			if i := int(k[0] - '1'); i < len(pins) {
+				return e.Navigate(pins[i].Screen, pins[i].Key)
+			}
 		}
 	}
 	return nil
@@ -124,7 +175,17 @@ func (o *Overview) View(e *core.Env, w, h int) string {
 		o.alert(e, "Unhealthy Targets", c.UnhealthyTargets, hw, ut), " ",
 		o.alert(e, "Active Alarms", c.ActiveAlarms, w-hw-1, at)) + "\n\n")
 
-	b.WriteString(theme.Title.Render("RECENT ACTIVITY") + "\n")
+	if o.sum != nil {
+		b.WriteString(healthStrip(c, w) + "\n")
+	}
+	if pins := e.Pins(); len(pins) > 0 {
+		var parts []string
+		for i, p := range pins {
+			parts = append(parts, theme.Key.Render(fmt.Sprint(i+1))+" "+theme.Body.Render(p.Label)+theme.Dim.Render(" "+p.Screen))
+		}
+		b.WriteString(theme.Title.Render("PINNED  ") + components.Truncate(strings.Join(parts, "   "), w-8) + "\n")
+	}
+	b.WriteString("\n" + theme.Title.Render("RECENT ACTIVITY") + "\n")
 	used := lipgloss.Height(b.String())
 	b.WriteString(recent(e, w, max(1, h-used)))
 	return b.String()
@@ -156,7 +217,7 @@ func (o *Overview) alert(e *core.Env, label string, c summary.Count, w int, tone
 	case o.loading && o.sum == nil:
 		title, detail = label+": "+e.Spinner(), ""
 	case c.Err != nil:
-		title, detail = label+": —", string(safety.Classify(c.Err))+" error"
+		title, detail = label+": —", kindLabel(safety.Classify(c.Err))
 	case c.Value == 0:
 		detail = "none"
 	}

@@ -2,7 +2,11 @@
 // (GitHub-dark palette: #0d1117 canvas, #161b22 panels, #30363d borders).
 package theme
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 var (
 	Canvas      = lipgloss.Color("#0d1117")
@@ -50,6 +54,26 @@ func Box(border lipgloss.Color) lipgloss.Style {
 	return lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(border).Padding(0, 1)
 }
 
+// PanelBox returns a rounded panel with explicit padding (density-dependent).
+func PanelBox(border lipgloss.Color, top, side, bottom int) lipgloss.Style {
+	return lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(border).Padding(top, side, bottom, side)
+}
+
+// Select renders a dropdown-looking field: " value      ▾ ".
+func Select(value string, w int, active bool) string {
+	st := lipgloss.NewStyle().Background(Bar).Foreground(Text)
+	if active {
+		st = lipgloss.NewStyle().Background(Accent).Foreground(White).Bold(true)
+	}
+	inner := max(1, w-4)
+	v := []rune(value)
+	if len(v) > inner {
+		v = append(v[:inner-1], '…')
+	}
+	pad := inner - len(v)
+	return st.Render(" " + string(v) + strings.Repeat(" ", max(0, pad)) + " ▾ ")
+}
+
 // Tone is a semantic row/card severity.
 type Tone int
 
@@ -89,13 +113,14 @@ func (t Tone) Border() lipgloss.Color {
 func StatusTone(s string) Tone {
 	switch s {
 	case "running", "available", "ACTIVE", "RUNNING", "healthy", "OK", "active", "COMPLETED", "Active", "Online",
-		"completed", "Successful", "CREATE_COMPLETE", "UPDATE_COMPLETE":
+		"completed", "Successful", "CREATE_COMPLETE", "UPDATE_COMPLETE", "Succeeded", "SUCCEEDED":
 		return ToneOK
 	case "pending", "stopping", "PENDING", "PROVISIONING", "DEACTIVATING", "draining", "initial", "IN_PROGRESS",
-		"INSUFFICIENT_DATA", "modifying", "backing-up", "provisioning", "queued", "Pending", "running…":
+		"INSUFFICIENT_DATA", "modifying", "backing-up", "provisioning", "queued", "Pending", "running…", "InProgress",
+		"Stopping", "STOPPING":
 		return ToneWarn
 	case "stopped", "terminated", "STOPPED", "INACTIVE", "unhealthy", "unavailable", "ALARM", "FAILED", "failed",
-		"Failed", "timed out", "Inactive", "ConnectionLost":
+		"Failed", "timed out", "Inactive", "ConnectionLost", "FAULT", "TIMED_OUT", "Superseded", "Stopped":
 		return ToneBad
 	case "cancelled", "shutting-down", "unused":
 		return ToneDim

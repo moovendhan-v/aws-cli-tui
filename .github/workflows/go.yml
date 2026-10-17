@@ -9,20 +9,35 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
 
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: devops
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.20'
+        go-version-file: devops/go.mod
+        cache-dependency-path: devops/go.sum
 
     - name: Build
       run: go build -v ./...
 
+    - name: Vet
+      run: go vet ./...
+
     - name: Test
-      run: go test -v ./...
+      run: go test ./...
+
+    - name: Validate command definitions
+      run: go run ./cmd/devops --check
+      env:
+        DEVOPS_HOME: ${{ runner.temp }}/devops-home

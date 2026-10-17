@@ -35,6 +35,19 @@ commands:
     timeout: 30s                      # optional, max 30m
 ```
 
+## Resource pickers
+
+Give a parameter `type: resource` and one of these `resource:` kinds and the
+form shows a searchable list of real resources (cached per profile/region):
+
+`ec2_instance` · `ecs_cluster` · `ecs_service` (needs `cluster`) · `ecs_task`
+(needs `cluster`, uses `service` if set) · `ecs_taskdef` · `log_group` ·
+`rds_instance` · `lambda_function` · `load_balancer` · `target_group` · `vpc` ·
+`cfn_stack` · `pipeline` · `build_project` · `s3_bucket`
+
+`enum` and `bool` parameters get a list of their options. Other kinds fall back
+to plain typing.
+
 ## Execution types
 
 | Type | What it can do |

@@ -12,13 +12,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/codebuild"
+	"github.com/aws/aws-sdk-go-v2/service/codepipeline"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+
+	"devops/internal/aws/meter"
 )
 
 // Context is the caller context every operation is bound to.
@@ -69,6 +74,7 @@ func NewSession(ctx context.Context, profile, region string) *Session {
 	if cfg.Region == "" {
 		cfg.Region = "us-east-1"
 	}
+	cfg.APIOptions = append(cfg.APIOptions, meter.Default.Middleware())
 	s.Cfg = cfg
 	s.Ctx.Region = cfg.Region
 	return s
@@ -141,4 +147,23 @@ func (s *Session) Logs() *cloudwatchlogs.Client {
 }
 func (s *Session) CloudFormation() *cloudformation.Client {
 	return client(s, "cfn", func(c aws.Config) *cloudformation.Client { return cloudformation.NewFromConfig(c) })
+}
+func (s *Session) CodePipeline() *codepipeline.Client {
+	return client(s, "codepipeline", func(c aws.Config) *codepipeline.Client { return codepipeline.NewFromConfig(c) })
+}
+func (s *Session) CodeBuild() *codebuild.Client {
+	return client(s, "codebuild", func(c aws.Config) *codebuild.Client { return codebuild.NewFromConfig(c) })
+}
+func (s *Session) S3() *s3.Client {
+	return client(s, "s3", func(c aws.Config) *s3.Client { return s3.NewFromConfig(c) })
+}
+
+// S3For returns an S3 client pinned to a bucket's region.
+func (s *Session) S3For(region string) *s3.Client {
+	if region == "" || region == s.Cfg.Region {
+		return s.S3()
+	}
+	return client(s, "s3:"+region, func(c aws.Config) *s3.Client {
+		return s3.NewFromConfig(c, func(o *s3.Options) { o.Region = region })
+	})
 }

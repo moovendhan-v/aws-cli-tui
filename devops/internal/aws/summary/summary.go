@@ -43,7 +43,7 @@ func (s Summary) AllFailed() error {
 const maxTargetGroups = 40
 
 // Load gathers all figures concurrently; individual failures don't fail the summary.
-func Load(ctx context.Context, s *auth.Session) Summary {
+func Load(ctx context.Context, s *auth.Session, targetHealth bool) Summary {
 	var (
 		out Summary
 		wg  sync.WaitGroup
@@ -93,7 +93,11 @@ func Load(ctx context.Context, s *auth.Session) Summary {
 		}
 		out.ActiveAlarms = c
 	})
-	run(func() { out.UnhealthyTargets = unhealthy(ctx, s) })
+	if targetHealth {
+		run(func() { out.UnhealthyTargets = unhealthy(ctx, s) })
+	} else {
+		out.UnhealthyTargets = Count{Detail: "check disabled (overview.target_health)"}
+	}
 
 	wg.Wait()
 	return out

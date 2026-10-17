@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"devops/internal/aws/auth"
+	"devops/internal/aws/console"
 	"devops/internal/aws/ecs"
 	"devops/internal/aws/lambda"
 	"devops/internal/aws/metrics"
@@ -38,8 +39,9 @@ func ECSClusters() *Level {
 		Title: "ECS Clusters", Noun: "ECS clusters",
 		Columns: []col{{Title: "Cluster", Width: 20, Flex: true}, {Title: "Status", Width: 9}, {Title: "Services", Width: 8},
 			{Title: "Running", Width: 8}, {Title: "Pending", Width: 8}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := ecs.ListClusters(ctx, s)
+		CacheKind: "ecs",
+		Page: func(ctx context.Context, s *auth.Session, token string) ([]components.Row, string, error) {
+			list, next, err := ecs.ListClustersPage(ctx, s, token)
 			rows := make([]components.Row, 0, len(list))
 			for _, c := range list {
 				tone := theme.StatusTone(c.Status)
@@ -49,7 +51,7 @@ func ECSClusters() *Level {
 				rows = append(rows, components.Row{Key: c.ARN, Data: c, Tone: tone,
 					Cells: []string{c.Name, c.Status, fmt.Sprint(c.Services), fmt.Sprint(c.Running), fmt.Sprint(c.Pending)}})
 			}
-			return rows, err
+			return rows, next, err
 		},
 		Child: func(r components.Row) *Level { return ecsServices(r.Data.(ecs.Cluster).Name) },
 		Actions: []Action{
@@ -58,6 +60,9 @@ func ECSClusters() *Level {
 			}},
 		},
 		Empty: "No ECS clusters in this region.",
+		Link: func(region string, r components.Row) string {
+			return console.ECSCluster(region, r.Data.(ecs.Cluster).Name)
+		},
 	}
 }
 
@@ -66,8 +71,9 @@ func ecsServices(cluster string) *Level {
 		Title: cluster, Noun: "ECS services",
 		Columns: []col{{Title: "Service", Width: 22, Flex: true}, {Title: "Status", Width: 8}, {Title: "Desired", Width: 7},
 			{Title: "Running", Width: 7}, {Title: "Pending", Width: 7}, {Title: "Rollout", Width: 12}, {Title: "Launch", Width: 8}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := ecs.ListServices(ctx, s, cluster)
+		CacheKind: "ecs",
+		Page: func(ctx context.Context, s *auth.Session, token string) ([]components.Row, string, error) {
+			list, next, err := ecs.ListServicesPage(ctx, s, cluster, token)
 			rows := make([]components.Row, 0, len(list))
 			for _, sv := range list {
 				tone := theme.ToneOK
@@ -80,9 +86,11 @@ func ecsServices(cluster string) *Level {
 				rows = append(rows, components.Row{Key: sv.ARN, Data: sv, Tone: tone,
 					Cells: []string{sv.Name, sv.Status, fmt.Sprint(sv.Desired), fmt.Sprint(sv.Running), fmt.Sprint(sv.Pending), dash(sv.Rollout), dash(sv.LaunchType)}})
 			}
-			return rows, err
+			return rows, next, err
 		},
-		Child: func(r components.Row) *Level { return ecsTasks(cluster, r.Data.(ecs.Service).Name) },
+		Open: func(e *core.Env, r components.Row) (Viewer, tea.Cmd) {
+			return newECSServiceView(e, "ecs", cluster, r.Data.(ecs.Service).Name)
+		},
 		Detail: func(r components.Row) string {
 			sv := r.Data.(ecs.Service)
 			return lines([2]string{"Task def", sv.TaskDef}, [2]string{"ECS Exec", yesNo(sv.ExecEnabled)},
@@ -100,68 +108,9 @@ func ecsServices(cluster string) *Level {
 			}},
 		},
 		Empty: "No services in this cluster.",
-	}
-}
-
-func ecsTasks(cluster, service string) *Level {
-	return &Level{
-		Title: service, Noun: "ECS tasks",
-		Columns: []col{{Title: "Task", Width: 12}, {Title: "Status", Width: 12}, {Title: "Health", Width: 9},
-			{Title: "Started", Width: 10}, {Title: "Stopped reason", Width: 20, Flex: true}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := ecs.ListTasks(ctx, s, cluster, service)
-			rows := make([]components.Row, 0, len(list))
-			for _, t := range list {
-				tone := theme.StatusTone(t.LastStatus)
-				if t.Health == "UNHEALTHY" {
-					tone = theme.ToneBad
-				}
-				reason := t.StoppedReason
-				if t.StopCode != "" && reason != "" {
-					reason = t.StopCode + ": " + reason
-				}
-				rows = append(rows, components.Row{Key: t.ARN, Data: t, Tone: tone,
-					Cells: []string{shortID(t.ID), t.LastStatus, dash(t.Health), components.Ago(t.StartedAt), dash(reason)}})
-			}
-			return rows, err
+		Link: func(region string, r components.Row) string {
+			return console.ECSService(region, cluster, r.Data.(ecs.Service).Name)
 		},
-		Detail: func(r components.Row) string {
-			t := r.Data.(ecs.Task)
-			out := []string{lines([2]string{"Task", t.ID}, [2]string{"Task def", t.TaskDef}, [2]string{"Stopped", t.StoppedReason})}
-			for _, c := range t.Containers {
-				exit := "-"
-				if c.ExitCode != nil {
-					exit = fmt.Sprint(*c.ExitCode)
-				}
-				line := fmt.Sprintf("◆ %s  %s  health=%s  exit=%s", c.Name, c.Status, dash(c.Health), exit)
-				if c.Reason != "" {
-					line += "  " + c.Reason
-				}
-				tone := theme.StatusTone(c.Status)
-				if c.ExitCode != nil && *c.ExitCode != 0 {
-					tone = theme.ToneBad
-				}
-				out = append(out, tone.Style().Render(line))
-			}
-			return strings.Join(out, "\n")
-		},
-		Actions: []Action{
-			{Key: "x", Label: "ECS Exec", Run: func(e *core.Env, r components.Row) tea.Cmd {
-				t := r.Data.(ecs.Task)
-				if t.LastStatus != "RUNNING" {
-					return e.Toast("ECS Exec needs a RUNNING task", theme.ToneWarn)
-				}
-				if !t.ExecEnabled {
-					return e.Toast("ECS Exec is not enabled on this task (enableExecuteCommand=false)", theme.ToneWarn)
-				}
-				args := map[string]string{"cluster": cluster, "task": t.ID}
-				if len(t.Containers) > 0 {
-					args["container"] = t.Containers[0].Name
-				}
-				return e.RunCommandID("ecs.exec.shell", args)
-			}},
-		},
-		Empty: "No running or recently stopped tasks.",
 	}
 }
 
@@ -179,14 +128,15 @@ func RDSInstances() *Level {
 		Title: "Databases", Noun: "RDS instances",
 		Columns: []col{{Title: "Identifier", Width: 20, Flex: true}, {Title: "Engine", Width: 16}, {Title: "Status", Width: 11},
 			{Title: "Class", Width: 14}, {Title: "Multi-AZ", Width: 8}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := rds.List(ctx, s)
+		CacheKind: "rds",
+		Page: func(ctx context.Context, s *auth.Session, token string) ([]components.Row, string, error) {
+			list, next, err := rds.ListPage(ctx, s, token)
 			rows := make([]components.Row, 0, len(list))
 			for _, d := range list {
 				rows = append(rows, components.Row{Key: d.ID, Data: d, Tone: theme.StatusTone(d.Status), Search: d.Endpoint,
 					Cells: []string{d.ID, d.Engine + " " + d.Version, d.Status, d.Class, yesNo(d.MultiAZ)}})
 			}
-			return rows, err
+			return rows, next, err
 		},
 		Detail: func(r components.Row) string {
 			d := r.Data.(rds.Instance)
@@ -215,6 +165,7 @@ func RDSInstances() *Level {
 			}},
 		},
 		Empty: "No RDS instances in this region.",
+		Link:  func(region string, r components.Row) string { return console.RDSInstance(region, r.Key) },
 	}
 }
 
@@ -225,8 +176,9 @@ func LambdaFunctions() *Level {
 		Title: "Lambda", Noun: "Lambda functions",
 		Columns: []col{{Title: "Function", Width: 24, Flex: true}, {Title: "Runtime", Width: 12}, {Title: "Memory", Width: 7},
 			{Title: "Timeout", Width: 7}, {Title: "State", Width: 8}, {Title: "Modified", Width: 10}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := lambda.List(ctx, s)
+		CacheKind: "lambda",
+		Page: func(ctx context.Context, s *auth.Session, token string) ([]components.Row, string, error) {
+			list, next, err := lambda.ListPage(ctx, s, token)
 			rows := make([]components.Row, 0, len(list))
 			for _, f := range list {
 				mod := f.LastModified
@@ -236,7 +188,7 @@ func LambdaFunctions() *Level {
 				rows = append(rows, components.Row{Key: f.Name, Data: f, Tone: theme.StatusTone(f.State),
 					Cells: []string{f.Name, dash(f.Runtime), fmt.Sprintf("%dMB", f.MemoryMB), fmt.Sprintf("%ds", f.TimeoutSec), dash(f.State), mod}})
 			}
-			return rows, err
+			return rows, next, err
 		},
 		Detail: func(r components.Row) string {
 			f := r.Data.(lambda.Function)
@@ -247,10 +199,11 @@ func LambdaFunctions() *Level {
 				return e.RunCommandID("lambda.function.config", map[string]string{"function_name": r.Key})
 			}},
 			{Key: "l", Label: "Logs", Run: func(e *core.Env, r components.Row) tea.Cmd {
-				return e.Navigate("logs", "/aws/lambda/"+r.Key)
+				return e.Navigate("logs", "open:/aws/lambda/"+r.Key)
 			}},
 		},
 		Empty: "No Lambda functions in this region.",
+		Link:  func(region string, r components.Row) string { return console.Lambda(region, r.Key) },
 	}
 }
 
@@ -261,20 +214,27 @@ func LoadBalancers() *Level {
 		Title: "Load Balancers", Noun: "load balancers",
 		Columns: []col{{Title: "Name", Width: 20, Flex: true}, {Title: "Type", Width: 11}, {Title: "Scheme", Width: 15},
 			{Title: "State", Width: 10}, {Title: "DNS", Width: 20, Flex: true}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := networking.LoadBalancers(ctx, s)
+		CacheKind: "elb",
+		Page: func(ctx context.Context, s *auth.Session, token string) ([]components.Row, string, error) {
+			list, next, err := networking.LoadBalancersPage(ctx, s, token)
 			rows := make([]components.Row, 0, len(list))
 			for _, lb := range list {
 				rows = append(rows, components.Row{Key: lb.ARN, Data: lb, Tone: theme.StatusTone(lb.State),
 					Cells: []string{lb.Name, lb.Type, lb.Scheme, lb.State, lb.DNS}})
 			}
-			return rows, err
+			return rows, next, err
 		},
 		Child: func(r components.Row) *Level {
 			lb := r.Data.(networking.LoadBalancer)
 			return targetGroups(lb.Name, lb.ARN)
 		},
+		Actions: []Action{
+			{Key: "m", Label: "Topology map", View: func(e *core.Env, r components.Row) (Viewer, tea.Cmd) {
+				return newTopologyView(e, r.Data.(networking.LoadBalancer))
+			}},
+		},
 		Empty: "No ALBs or NLBs in this region.",
+		Link:  func(region string, r components.Row) string { return console.LoadBalancer(region, r.Key) },
 	}
 }
 
@@ -283,7 +243,7 @@ func targetGroups(lbName, lbARN string) *Level {
 		Title: lbName, Noun: "target groups",
 		Columns: []col{{Title: "Target group", Width: 22, Flex: true}, {Title: "Protocol", Width: 8}, {Title: "Port", Width: 6},
 			{Title: "Target type", Width: 11}, {Title: "Health check", Width: 16, Flex: true}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
+		Page: Full(func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
 			list, err := networking.TargetGroups(ctx, s, lbARN)
 			rows := make([]components.Row, 0, len(list))
 			for _, tg := range list {
@@ -291,9 +251,10 @@ func targetGroups(lbName, lbARN string) *Level {
 					Cells: []string{tg.Name, tg.Protocol, fmt.Sprint(tg.Port), tg.TargetType, dash(tg.HealthPath)}})
 			}
 			return rows, err
-		},
+		}),
 		Child: func(r components.Row) *Level { tg := r.Data.(networking.TargetGroup); return targets(tg.Name, tg.ARN) },
 		Empty: "No target groups attached.",
+		Link:  func(region string, r components.Row) string { return console.TargetGroup(region, r.Key) },
 	}
 }
 
@@ -302,7 +263,7 @@ func targets(tgName, tgARN string) *Level {
 		Title: tgName, Noun: "target health",
 		Columns: []col{{Title: "Target", Width: 22}, {Title: "Port", Width: 6}, {Title: "State", Width: 12},
 			{Title: "Reason", Width: 20}, {Title: "Description", Width: 20, Flex: true}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
+		Page: Full(func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
 			list, err := networking.TargetHealth(ctx, s, tgARN)
 			rows := make([]components.Row, 0, len(list))
 			for _, t := range list {
@@ -310,8 +271,9 @@ func targets(tgName, tgARN string) *Level {
 					Cells: []string{t.ID, fmt.Sprint(t.Port), t.State, dash(t.Reason), dash(t.Description)}})
 			}
 			return rows, err
-		},
+		}),
 		Empty: "No registered targets.",
+		Link:  func(region string, _ components.Row) string { return console.TargetGroup(region, tgARN) },
 	}
 }
 
@@ -322,8 +284,9 @@ func Alarms() *Level {
 		Title: "Metrics & Alarms", Noun: "CloudWatch alarms",
 		Columns: []col{{Title: "Alarm", Width: 26, Flex: true}, {Title: "State", Width: 17}, {Title: "Metric", Width: 22},
 			{Title: "Changed", Width: 10}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := metrics.Alarms(ctx, s, "")
+		CacheKind: "alarms",
+		Page: func(ctx context.Context, s *auth.Session, token string) ([]components.Row, string, error) {
+			list, next, err := metrics.AlarmsPage(ctx, s, "", token)
 			rows := make([]components.Row, 0, len(list))
 			for _, a := range list {
 				metric := a.Metric
@@ -333,12 +296,16 @@ func Alarms() *Level {
 				rows = append(rows, components.Row{Key: a.Name, Data: a, Tone: theme.StatusTone(a.State), Search: a.Reason,
 					Cells: []string{a.Name, a.State, dash(metric), components.Ago(a.Updated)}})
 			}
-			return rows, err
+			return rows, next, err
 		},
 		Detail: func(r components.Row) string {
 			return lines([2]string{"Reason", r.Data.(metrics.Alarm).Reason})
 		},
+		Open: func(e *core.Env, r components.Row) (Viewer, tea.Cmd) {
+			return newAlarmView(e, r.Data.(metrics.Alarm))
+		},
 		Empty: "No CloudWatch alarms in this region.",
+		Link:  func(region string, r components.Row) string { return console.Alarm(region, r.Key) },
 	}
 }
 
@@ -349,14 +316,15 @@ func VPCs() *Level {
 		Title: "Networking", Noun: "VPCs",
 		Columns: []col{{Title: "VPC", Width: 22}, {Title: "Name", Width: 20, Flex: true}, {Title: "CIDR", Width: 18},
 			{Title: "State", Width: 10}, {Title: "Default", Width: 7}},
-		Load: func(ctx context.Context, s *auth.Session) ([]components.Row, error) {
-			list, err := networking.VPCs(ctx, s)
+		CacheKind: "network",
+		Page: func(ctx context.Context, s *auth.Session, token string) ([]components.Row, string, error) {
+			list, next, err := networking.VPCsPage(ctx, s, token)
 			rows := make([]components.Row, 0, len(list))
 			for _, v := range list {
 				rows = append(rows, components.Row{Key: v.ID, Data: v, Tone: theme.StatusTone(v.State),
 					Cells: []string{v.ID, dash(v.Name), v.CIDR, v.State, yesNo(v.Default)}})
 			}
-			return rows, err
+			return rows, next, err
 		},
 		Actions: []Action{
 			{Key: "s", Label: "Subnets", Run: func(e *core.Env, r components.Row) tea.Cmd {
@@ -367,5 +335,6 @@ func VPCs() *Level {
 			}},
 		},
 		Empty: "No VPCs in this region.",
+		Link:  func(region string, r components.Row) string { return console.VPC(region, r.Key) },
 	}
 }
