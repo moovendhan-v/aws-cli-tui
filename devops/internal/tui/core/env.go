@@ -8,12 +8,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/app"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/cache"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/commands"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/app"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/cache"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/commands"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // Screen is a workspace view selected from the navigation.

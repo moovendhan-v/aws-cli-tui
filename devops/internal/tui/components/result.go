@@ -9,9 +9,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/metrics"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/metrics"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/safety"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // Views a structured result can be shown in.

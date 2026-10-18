@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"time"
 
-	library "github.com/moovendhan-v/aws-cli-tui/devops/commands"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/meter"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ops"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/profiles"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/cache"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/commands"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/config"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/storage"
+	library "github.com/moovendhan-v/aws-dev-ops-utils/devops/commands"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/meter"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ops"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/profiles"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/cache"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/commands"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/config"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/safety"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/storage"
 )
 
 type Deps struct {

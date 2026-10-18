@@ -12,8 +12,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/muesli/termenv"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/app"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/app"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui"
 )
 
 // newDeps builds dependencies against an isolated home and a fake AWS config.

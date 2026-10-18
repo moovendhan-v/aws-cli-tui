@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/safety"
 )
 
 var (

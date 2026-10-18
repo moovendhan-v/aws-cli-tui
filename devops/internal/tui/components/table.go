@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 type Column struct {

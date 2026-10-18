@@ -11,7 +11,7 @@ import (
 	sdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
 )
 
 type Alarm struct {

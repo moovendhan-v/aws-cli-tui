@@ -12,17 +12,17 @@ import (
 	ecssdk "github.com/aws/aws-sdk-go-v2/service/ecs"
 	ecstypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/cicd"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ec2"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ecs"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/lambda"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/logs"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/networking"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/rds"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/s3x"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/commands"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/cicd"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ec2"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ecs"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/lambda"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/logs"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/networking"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/rds"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/s3x"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/commands"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // Option is one choice for a form field: Value is what the command gets,

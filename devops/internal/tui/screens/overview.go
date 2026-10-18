@@ -9,12 +9,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/summary"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/summary"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/safety"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 type Overview struct {

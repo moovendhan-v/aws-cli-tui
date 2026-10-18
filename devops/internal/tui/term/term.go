@@ -17,7 +17,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/hinshun/vt10x"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
 )
 
 type Session struct {

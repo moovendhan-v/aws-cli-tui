@@ -10,14 +10,14 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/app"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/profiles"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/screens"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/app"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/profiles"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/safety"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/screens"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 type focusArea int

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ec2"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ecs"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/lambda"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/metrics"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/networking"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/rds"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ec2"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ecs"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/lambda"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/metrics"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/networking"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/rds"
 )
 
 // Count is one overview figure; Err is set when that part failed.

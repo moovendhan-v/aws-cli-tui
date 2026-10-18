@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
 )
 
 func TestBoundedConcurrency(t *testing.T) {

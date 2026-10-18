@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // Log display formats, cycled with j in the log viewer.

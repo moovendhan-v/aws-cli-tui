@@ -9,13 +9,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/cicd"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/console"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/cicd"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/console"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // stageDot renders one stage as a coloured dot for the pipeline list.

@@ -37,7 +37,7 @@ brew install moovendhan-v/tap/aws-dev-ops-utils
 **Install script** (macOS and Linux, no Homebrew needed; verifies the SHA-256 checksum)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/moovendhan-v/aws-cli-tui/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/moovendhan-v/aws-dev-ops-utils/main/install.sh | sh
 ```
 
 Pin a version or choose a folder with `VERSION=0.1.0` / `INSTALL_DIR=~/bin` before `sh`.
@@ -45,11 +45,11 @@ Pin a version or choose a folder with `VERSION=0.1.0` / `INSTALL_DIR=~/bin` befo
 **Go** (Go 1.26+)
 
 ```bash
-go install github.com/moovendhan-v/aws-cli-tui/devops/cmd/ctm-ops@latest
+go install github.com/moovendhan-v/aws-dev-ops-utils/devops/cmd/ctm-ops@latest
 ```
 
 **Manual download**: grab `aws-dev-ops-utils_<version>_<os>_<arch>.tar.gz` from the
-[releases page](https://github.com/moovendhan-v/aws-cli-tui/releases), check it
+[releases page](https://github.com/moovendhan-v/aws-dev-ops-utils/releases), check it
 against `checksums.txt`, and put `ctm-ops` on your PATH.
 
 Then run `ctm-ops`. For SSM sessions, ECS Exec and database tunnels also install:

@@ -12,7 +12,7 @@ import (
 	cbtypes "github.com/aws/aws-sdk-go-v2/service/codebuild/types"
 	cp "github.com/aws/aws-sdk-go-v2/service/codepipeline"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
 )
 
 type Action struct {

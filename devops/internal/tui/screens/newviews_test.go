@@ -7,9 +7,9 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/lambda"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/trail"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/lambda"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/trail"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 func TestTraceChangesLambdaViews(t *testing.T) {

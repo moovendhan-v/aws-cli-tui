@@ -6,7 +6,7 @@ import (
 
 	"github.com/sahilm/fuzzy"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/storage"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/storage"
 )
 
 type Match struct {

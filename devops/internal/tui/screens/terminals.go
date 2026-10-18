@@ -6,11 +6,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/commands"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/term"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/commands"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/term"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // Terminals hosts interactive sessions (SSM, ECS Exec, tunnels) inside the

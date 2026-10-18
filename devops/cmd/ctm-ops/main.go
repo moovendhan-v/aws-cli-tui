@@ -7,9 +7,9 @@ import (
 	"os"
 	"sort"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/app"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/preview"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/app"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/preview"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui"
 )
 
 var version = "0.1.0-dev"

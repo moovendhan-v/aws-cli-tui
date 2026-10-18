@@ -14,8 +14,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ops"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ops"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/safety"
 )
 
 const (

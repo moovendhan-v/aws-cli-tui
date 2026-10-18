@@ -6,10 +6,10 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/profiles"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/profiles"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // dropdown is the profile/region chooser that opens inside the sidebar,

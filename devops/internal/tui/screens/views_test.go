@@ -9,11 +9,11 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/app"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/metrics"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/networking"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/app"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/metrics"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/networking"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
 )
 
 func testEnv(t *testing.T) *core.Env {

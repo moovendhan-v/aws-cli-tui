@@ -9,7 +9,7 @@ import (
 	sdk "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
 )
 
 // History pages backwards through a log group, newest events first.

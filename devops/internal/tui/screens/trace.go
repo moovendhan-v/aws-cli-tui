@@ -9,19 +9,19 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ec2"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ecs"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/lambda"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/logs"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/metrics"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/networking"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/rds"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ec2"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/ecs"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/lambda"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/logs"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/metrics"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/networking"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/aws/rds"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/executor"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/safety"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // traceHop is one step of a "follow the error" chain.

@@ -3,7 +3,7 @@ package components
 import (
 	"strconv"
 
-	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-dev-ops-utils/devops/internal/tui/theme"
 )
 
 // Diff returns a unified-style line diff of a → b (LCS based), with

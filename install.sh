@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install ctm-ops (aws-dev-ops-utils) from a GitHub release.
 #
-#   curl -fsSL https://raw.githubusercontent.com/moovendhan-v/aws-cli-tui/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/moovendhan-v/aws-dev-ops-utils/main/install.sh | sh
 #
 # Options (environment variables):
 #   VERSION=0.1.0              install a specific version (default: latest)
@@ -9,7 +9,7 @@
 #                              writable, otherwise ~/.local/bin)
 set -eu
 
-REPO="moovendhan-v/aws-cli-tui"
+REPO="moovendhan-v/aws-dev-ops-utils"
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'install: %s\n' "$*" >&2; exit 1; }
