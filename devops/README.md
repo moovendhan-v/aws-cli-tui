@@ -200,7 +200,15 @@ Settings. Write your own commands as described in `docs/commands.md`.
    git tag v0.2.0 && git push origin v0.2.0
    ```
 
-2. The **Release** workflow tests, builds macOS/Linux archives, publishes a
-   GitHub release, and writes `Formula/aws-dev-ops-utils.rb` to
-   `moovendhan-v/homebrew-tap` (needs the `HOMEBREW_TAP_TOKEN` secret: a
-   fine-grained token with *Contents: read & write* on that repo only).
+2. The **Release** workflow tests, builds macOS/Linux archives and publishes the
+   GitHub release.
+
+3. Update the Homebrew tap with your GitHub CLI login:
+
+   ```bash
+   devops/scripts/update-tap.sh 0.2.0
+   ```
+
+   (Or add a `HOMEBREW_TAP_TOKEN` secret — a fine-grained token with
+   *Contents: read & write* on `moovendhan-v/homebrew-tap` — and the workflow
+   does this step itself.)
