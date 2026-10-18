@@ -51,6 +51,11 @@ type Execution struct {
 	Program   string   `yaml:"program"`
 	Args      []string `yaml:"args"`
 	Steps     []Step   `yaml:"steps"`
+	// Interactive only: Ready is output text meaning the session is up (e.g.
+	// a tunnel listening); Then starts another interactive command once Ready
+	// appears (e.g. a database client through the tunnel).
+	Ready string `yaml:"ready"`
+	Then  *Step  `yaml:"then"`
 }
 
 type Command struct {

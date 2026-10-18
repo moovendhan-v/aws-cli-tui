@@ -1,0 +1,78 @@
+commands:
+  - id: db.client.postgres
+    name: PostgreSQL Shell (psql)
+    category: RDS
+    description: Open psql against a host/port (you type the password at the prompt; it is never stored)
+    tags: [database, sql, psql, postgres, shell, query, connect]
+    execution:
+      type: interactive
+      program: psql
+      args: [-h, '{{host}}', -p, '{{port}}', -U, '{{user}}', -d, '{{dbname}}']
+    parameters:
+      - { name: host, type: string, required: true, pattern: '[A-Za-z0-9.-]+' }
+      - { name: port, type: int, default: '5432' }
+      - { name: user, type: string, required: true, pattern: '[A-Za-z0-9_.@-]+' }
+      - { name: dbname, type: string, default: postgres, pattern: '[A-Za-z0-9_$-]+' }
+    risk: mutating
+
+  - id: db.client.mysql
+    name: MySQL Shell (mysql)
+    category: RDS
+    description: Open the mysql client against a host/port (password typed at the prompt, never stored)
+    tags: [database, sql, mysql, mariadb, aurora, shell, query, connect]
+    execution:
+      type: interactive
+      program: mysql
+      args: [--protocol=TCP, -h, '{{host}}', -P, '{{port}}', -u, '{{user}}', -p, '{{dbname}}']
+    parameters:
+      - { name: host, type: string, required: true, pattern: '[A-Za-z0-9.-]+' }
+      - { name: port, type: int, default: '3306' }
+      - { name: user, type: string, required: true, pattern: '[A-Za-z0-9_.@-]+' }
+      - { name: dbname, type: string, default: mysql, pattern: '[A-Za-z0-9_$-]+' }
+    risk: mutating
+
+  - id: db.connect.postgres
+    name: Connect to PostgreSQL via Bastion
+    category: RDS
+    description: SSM tunnel through a bastion, then psql through the tunnel — all inside the Terminals panel
+    tags: [database, connect, postgres, psql, tunnel, bastion, private, sql]
+    execution:
+      type: interactive
+      program: aws
+      args: [ssm, start-session, --target, '{{instance_id}}', --document-name, AWS-StartPortForwardingSessionToRemoteHost,
+             --parameters, 'host={{db_host}},portNumber={{db_port}},localPortNumber={{local_port}}']
+      ready: Waiting for connections
+      then:
+        command: db.client.postgres
+        with: { host: 127.0.0.1, port: '{{local_port}}', user: '{{db_user}}', dbname: '{{db_name}}' }
+    parameters:
+      - { name: instance_id, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}', description: SSM-managed bastion in the database VPC }
+      - { name: db_host, type: string, required: true, pattern: '[A-Za-z0-9.-]+' }
+      - { name: db_port, type: int, default: '5432' }
+      - { name: db_user, type: string, required: true, pattern: '[A-Za-z0-9_.@-]+' }
+      - { name: db_name, type: string, default: postgres, pattern: '[A-Za-z0-9_$-]+' }
+      - { name: local_port, type: int, default: '15432' }
+    risk: mutating
+
+  - id: db.connect.mysql
+    name: Connect to MySQL via Bastion
+    category: RDS
+    description: SSM tunnel through a bastion, then the mysql client through the tunnel
+    tags: [database, connect, mysql, mariadb, aurora, tunnel, bastion, private, sql]
+    execution:
+      type: interactive
+      program: aws
+      args: [ssm, start-session, --target, '{{instance_id}}', --document-name, AWS-StartPortForwardingSessionToRemoteHost,
+             --parameters, 'host={{db_host}},portNumber={{db_port}},localPortNumber={{local_port}}']
+      ready: Waiting for connections
+      then:
+        command: db.client.mysql
+        with: { host: 127.0.0.1, port: '{{local_port}}', user: '{{db_user}}', dbname: '{{db_name}}' }
+    parameters:
+      - { name: instance_id, type: resource, resource: ec2_instance, required: true, pattern: 'i-[0-9a-f]{8,17}', description: SSM-managed bastion in the database VPC }
+      - { name: db_host, type: string, required: true, pattern: '[A-Za-z0-9.-]+' }
+      - { name: db_port, type: int, default: '3306' }
+      - { name: db_user, type: string, required: true, pattern: '[A-Za-z0-9_.@-]+' }
+      - { name: db_name, type: string, default: mysql, pattern: '[A-Za-z0-9_$-]+' }
+      - { name: local_port, type: int, default: '13306' }
+    risk: mutating

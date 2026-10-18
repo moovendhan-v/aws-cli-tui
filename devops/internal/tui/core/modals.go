@@ -242,6 +242,9 @@ func (c *Confirm) View(e *Env, w, h int) string {
 	if len(c.p.Argv) > 0 {
 		lines = append(lines, "", theme.Dim.Render("$ "+strings.Join(c.p.Argv, " ")))
 	}
+	if t := c.p.Then; t != nil {
+		lines = append(lines, theme.Dim.Render("then, once ready: $ "+strings.Join(t.Argv, " ")))
+	}
 	lines = append(lines, "")
 	if c.require != "" {
 		lines = append(lines, theme.Warn.Render(fmt.Sprintf("Type %q to confirm:", c.require)),

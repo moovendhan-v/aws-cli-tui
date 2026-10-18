@@ -1,12 +1,15 @@
 package tests
 
 import (
+	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 
 	"devops/internal/aws/ecs"
+	"devops/internal/aws/metrics"
 	"devops/internal/tui/components"
 )
 
@@ -38,5 +41,33 @@ func TestResultViews(t *testing.T) {
 	lines := components.RenderResult([]string{"a", "b"}, "table", 80)
 	if len(lines) != 2 {
 		t.Errorf("string results should pass through, got %v", lines)
+	}
+}
+
+func TestMetricSeriesRendersChart(t *testing.T) {
+	now := time.Now()
+	s := metrics.Series{Namespace: "AWS/EC2", Metric: "CPUUtilization", Dimensions: map[string]string{"InstanceId": "i-1"},
+		Since: 3 * time.Hour, Period: 5 * time.Minute}
+	for i := range 36 {
+		v := 20 + 30*math.Sin(float64(i)/5)
+		s.Points = append(s.Points, metrics.Point{Time: now.Add(time.Duration(i-36) * 5 * time.Minute), Average: v, Maximum: v + 5, Unit: "Percent"})
+	}
+	out := ansi.Strip(strings.Join(components.RenderResult(s, "table", 90), "\n"))
+	if testing.Verbose() {
+		t.Log("\n" + out)
+	}
+	for _, want := range []string{"AWS/EC2 / CPUUtilization", "now ", "peak", "current"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	braille := false
+	for _, r := range out {
+		if r > 0x2800 && r <= 0x28FF {
+			braille = true
+		}
+	}
+	if !braille {
+		t.Error("expected a braille line chart")
 	}
 }

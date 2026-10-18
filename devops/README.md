@@ -46,14 +46,15 @@ vars). The tool stores only preferences, a cache in memory, and redacted history
 
 | Screen | What you can do |
 |---|---|
-| Overview | Counts, alerts, health strip, pinned resources (`1`–`9`), recent activity |
+| Overview | Counts, alerts, health strip, pinned resources (`1`–`9`), recent activity; `F` follows the firing alarm |
+| What Changed? | CloudTrail write events + alarm state changes for 1h/6h/24h/7d with a timeline (▲ = alarm fired), failed/denied-only filter (`e`), routine agent noise hidden (`n`), `g` jumps to the resource |
 | EC2 | Search, details, SSM readiness, SSM shell, health workflow, CPU trends (`C`, billed) |
 | ECS | Cluster → service view with tabs: Overview · Deployments (animated progress) · Tasks · Events · Task definition (revision diff) · Metrics. Scale, redeploy, roll back, stop task, exec, port-forward, jump to logs |
-| Databases | Connectivity workflow, connection metrics, SSM tunnel |
-| Lambda | Configuration, open the function's logs |
-| Load Balancers | Target groups → target health, and a topology map (`m`) |
+| Databases | Enter/`x` opens a SQL shell (psql/mysql) in Terminals, through an SSM bastion tunnel or directly; connectivity workflow, connection metrics |
+| Lambda | Function view: configuration (env names only), invocations/errors/duration charts, recent error lines; invoke with a test event (`i`), logs (`l`) |
+| Load Balancers | Target groups → target health, a topology map (`m`), `F` on a target group follows the error |
 | CloudWatch Logs | Opens on recent history (newest events across streams). Scroll up to load older events; `t` live tail (poll or Live Tail), errors-only, filter patterns, JSON pretty-print, events/min histogram |
-| Metrics & Alarms | Alarm view with state history and a braille chart with the threshold line |
+| Metrics & Alarms | Alarm view with state history and a braille chart with the threshold line; `F` follows the error |
 | Networking | VPCs, subnets, route tables |
 | S3 Buckets | Browse buckets/folders, security check (`i`), previews: images (block-art in any terminal, full resolution in Kitty/iTerm2/WezTerm/Ghostty), text/JSON/CSV, video still frames (ffmpeg) |
 | Pipelines | Stage dots per pipeline; pipeline view with an animated stage diagram, actions, run history; start/stop/retry/approve/reject |
@@ -81,6 +82,17 @@ vars). The tool stores only preferences, a cache in memory, and redacted history
 | `Esc` · `?` · `q` | Back · help · quit |
 
 While mouse support is on, hold Option (macOS) or Shift to select text with the mouse. You can turn mouse support off in Settings.
+
+## Follow the error
+
+`F` on a firing alarm (or on the overview, or a target group) walks the chain
+for you, step by step:
+
+alarm → target group (unhealthy targets and reasons) → the ECS service using it
+(running vs desired, rollout, failing events) → stopped-task reasons → error
+lines in its log group over the last 30 minutes. EC2 targets show status
+checks; Lambda and RDS alarms go to the function's errors or the database.
+Enter on any step opens that screen.
 
 ## Forms that find values for you
 

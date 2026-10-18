@@ -83,6 +83,7 @@ func New(d *app.Deps) *Model {
 			"activity":  screens.NewActivity(),
 			"settings":  screens.NewSettings(),
 			"terminals": screens.NewTerminals(),
+			"changes":   screens.NewChanges(),
 			"pipelines": screens.NewResource("pipelines", screens.Pipelines),
 			"builds":    screens.NewBuilds(),
 			"s3":        screens.NewS3(),

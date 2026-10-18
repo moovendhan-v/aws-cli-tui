@@ -435,10 +435,10 @@ func (s *EC2) detailView(e *core.Env, w, h int) string {
 		for _, k := range keys {
 			tags = append(tags, theme.Dim.Render(k+"=")+theme.Body.Render(in.Tags[k]))
 		}
-		b.WriteString(theme.Title.Render("TAGS") + "\n" + strings.Join(tags, "  ") + "\n\n")
+		b.WriteString(theme.Title.Render("TAGS") + "\n" + pack(tags, "   ", w) + "\n\n")
 	}
-	b.WriteString(theme.Title.Render("ACTIONS") + "\n" + hintLine([]core.Hint{
-		{Key: "s", Label: "SSM session"}, {Key: "h", Label: "Health workflow"}, {Key: "c", Label: "CPU metrics"}, {Key: "g", Label: "Security groups"}, {Key: "m", Label: "Re-check SSM"}, {Key: "o", Label: "Open in console"}, {Key: "y", Label: "Copy ID"}, {Key: "b", Label: "Reboot"},
-	}))
+	b.WriteString(theme.Title.Render("ACTIONS") + "\n" + hintLines([]core.Hint{
+		{Key: "s", Label: "SSM session"}, {Key: "h", Label: "Health workflow"}, {Key: "c", Label: "CPU metrics"}, {Key: "g", Label: "Security groups"}, {Key: "m", Label: "Re-check SSM"}, {Key: "o", Label: "Open in console"}, {Key: "y", Label: "Copy ID"}, {Key: "*", Label: "Pin"}, {Key: "b", Label: "Reboot"},
+	}, w))
 	return components.Fit(b.String(), w, h)
 }

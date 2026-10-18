@@ -89,6 +89,7 @@ type frame struct {
 // Resource is a generic, drill-down resource browser with caching and
 // incremental pagination.
 type Resource struct {
+	focus  func(e *core.Env, q string) (Viewer, tea.Cmd, bool)
 	view   Viewer
 	id     string
 	root   func() *Level
@@ -99,6 +100,12 @@ type Resource struct {
 
 func NewResource(id string, root func() *Level) *Resource {
 	return &Resource{id: id, root: root, filter: newFilter()}
+}
+
+// WithFocus lets searches/navigation open custom views ("service:…", "fn:…").
+func (r *Resource) WithFocus(f func(e *core.Env, q string) (Viewer, tea.Cmd, bool)) *Resource {
+	r.focus = f
+	return r
 }
 
 func (r *Resource) ID() string { return r.id }
@@ -195,6 +202,15 @@ func (r *Resource) loadMore(e *core.Env, f *frame) tea.Cmd {
 }
 
 func (r *Resource) Focus(e *core.Env, q string) tea.Cmd {
+	if r.focus != nil {
+		if v, cmd, ok := r.focus(e, q); ok {
+			if len(r.stack) == 0 {
+				cmd = tea.Batch(r.Init(e), cmd)
+			}
+			r.view = v
+			return cmd
+		}
+	}
 	r.view = nil
 	if len(r.stack) > 1 {
 		r.stack = r.stack[:1]

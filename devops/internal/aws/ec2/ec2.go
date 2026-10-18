@@ -121,3 +121,28 @@ func ListPage(ctx context.Context, s *auth.Session, token string) ([]Instance, s
 	}
 	return out, aws.ToString(page.NextToken), nil
 }
+
+// Health returns EC2 status-check results ("ok", "impaired", "initializing"…)
+// keyed by instance ID.
+func Health(ctx context.Context, s *auth.Session, ids []string) (map[string]string, error) {
+	out, err := s.EC2().DescribeInstanceStatus(ctx, &sdk.DescribeInstanceStatusInput{InstanceIds: ids, IncludeAllInstances: aws.Bool(true)})
+	if err != nil {
+		return nil, err
+	}
+	res := map[string]string{}
+	for _, st := range out.InstanceStatuses {
+		state := "unknown"
+		if st.InstanceState != nil {
+			state = string(st.InstanceState.Name)
+		}
+		checks := "ok"
+		if st.InstanceStatus != nil && st.InstanceStatus.Status != "ok" {
+			checks = string(st.InstanceStatus.Status)
+		}
+		if st.SystemStatus != nil && st.SystemStatus.Status != "ok" && checks == "ok" {
+			checks = "system " + string(st.SystemStatus.Status)
+		}
+		res[aws.ToString(st.InstanceId)] = state + " · checks " + checks
+	}
+	return res, nil
+}

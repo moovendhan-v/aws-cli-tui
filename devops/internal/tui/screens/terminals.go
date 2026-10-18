@@ -16,16 +16,19 @@ import (
 // Terminals hosts interactive sessions (SSM, ECS Exec, tunnels) inside the
 // workspace. Keys go straight to the active session; Ctrl+] opens a menu.
 type Terminals struct {
-	sessions []*term.Session
-	active   int
-	nextID   int
-	leader   bool
-	cols     int
-	rows     int
-	tabHit   map[int][2]int // session index → x range on the tab line
+	followUps map[int]*commands.Prepared // session ID → command to start once it is ready
+	sessions  []*term.Session
+	active    int
+	nextID    int
+	leader    bool
+	cols      int
+	rows      int
+	tabHit    map[int][2]int // session index → x range on the tab line
 }
 
-func NewTerminals() *Terminals { return &Terminals{tabHit: map[int][2]int{}} }
+func NewTerminals() *Terminals {
+	return &Terminals{tabHit: map[int][2]int{}, followUps: map[int]*commands.Prepared{}}
+}
 
 func (t *Terminals) ID() string { return "terminals" }
 
@@ -61,6 +64,9 @@ func (t *Terminals) Open(e *core.Env, p *commands.Prepared) tea.Cmd {
 	}
 	t.nextID++
 	title, note, ready := sessionTitle(p)
+	if p.Cmd.Execution.Ready != "" {
+		ready = p.Cmd.Execution.Ready
+	}
 	s, err := term.Start(t.nextID, title, cmd, job, max(t.cols, 80), max(t.rows, 24), ready, func(s *term.Session) {
 		code, err := s.Exit()
 		e.Deps.Exec.EndInteractive(s.Job, err, code)
@@ -72,6 +78,9 @@ func (t *Terminals) Open(e *core.Env, p *commands.Prepared) tea.Cmd {
 	s.Note = note
 	t.sessions = append(t.sessions, s)
 	t.active = len(t.sessions) - 1
+	if p.Then != nil {
+		t.followUps[s.ID] = p.Then
+	}
 	return nil
 }
 
@@ -91,6 +100,12 @@ func sessionTitle(p *commands.Prepared) (title, note, ready string) {
 	case "ssm.tunnel.ecs":
 		return "forward :" + v["local_port"], fmt.Sprintf("localhost:%s → task %s port %s", v["local_port"], shortID(v["task"]), v["port"]),
 			"Waiting for connections"
+	case "db.connect.postgres", "db.connect.mysql":
+		return "tunnel :" + v["local_port"], fmt.Sprintf("localhost:%s → %s:%s via %s", v["local_port"], v["db_host"], v["db_port"], label("instance_id")), ""
+	case "db.client.postgres":
+		return "psql " + v["user"] + "@" + v["dbname"], "", ""
+	case "db.client.mysql":
+		return "mysql " + v["user"] + "@" + v["dbname"], "", ""
 	case "ssm.tunnel.database":
 		return "tunnel :" + v["local_port"], fmt.Sprintf("localhost:%s → %s:%s via %s", v["local_port"], v["db_host"], v["db_port"], label("instance_id")),
 			"Waiting for connections"
@@ -102,6 +117,17 @@ func (t *Terminals) Update(e *core.Env, msg tea.Msg) tea.Cmd {
 	switch m := msg.(type) {
 	case core.TickMsg:
 		var cmds []tea.Cmd
+		for _, s := range t.sessions {
+			next, ok := t.followUps[s.ID]
+			switch {
+			case ok && s.Ready():
+				delete(t.followUps, s.ID)
+				cmds = append(cmds, t.Open(e, next))
+			case ok && s.Done():
+				delete(t.followUps, s.ID)
+				cmds = append(cmds, e.Toast("The tunnel closed before it was ready, so "+next.Cmd.Name+" was not started", theme.ToneWarn))
+			}
+		}
 		for _, s := range t.sessions {
 			if s.MarkReported() {
 				_, err := s.Exit()

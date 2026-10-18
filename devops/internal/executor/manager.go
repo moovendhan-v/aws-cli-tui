@@ -136,6 +136,12 @@ func (j *Job) Write(s string) {
 
 // WriteValue renders a structured result as indented JSON (or lines for []string).
 func (j *Job) WriteValue(v any) {
+	if tl, ok := v.(interface{ TextLines() []string }); ok {
+		for _, l := range tl.TextLines() {
+			j.Write(l)
+		}
+		return
+	}
 	switch t := v.(type) {
 	case nil:
 		return

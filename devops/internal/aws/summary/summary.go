@@ -19,6 +19,7 @@ import (
 type Count struct {
 	Value  int
 	Detail string
+	Key    string // e.g. the first firing alarm's name
 	Err    error
 }
 
@@ -86,6 +87,7 @@ func Load(ctx context.Context, s *auth.Session, targetHealth bool) Summary {
 		l, err := metrics.Alarms(ctx, s, "ALARM")
 		c := Count{Value: len(l), Err: err}
 		if len(l) > 0 {
+			c.Key = l[0].Name
 			c.Detail = l[0].Name
 			if l[0].Metric != "" {
 				c.Detail += " (" + l[0].Metric + ")"

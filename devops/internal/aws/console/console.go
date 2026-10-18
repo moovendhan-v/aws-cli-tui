@@ -112,3 +112,7 @@ func Safe(u string) bool {
 	}
 	return p.Host == "s3.console.aws.amazon.com" || strings.HasSuffix(p.Host, ".console.aws.amazon.com")
 }
+
+func CloudTrailEvent(region, id string) string {
+	return fmt.Sprintf("%s/cloudtrailv2/home?region=%s#/events/%s", host(region), region, url.PathEscape(id))
+}

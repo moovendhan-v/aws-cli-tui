@@ -63,7 +63,7 @@ type logViewer struct {
 	follow   bool
 	wrap     bool
 	streams  bool
-	pretty   bool
+	format   string // readable, json or raw
 	hoff     int
 	height   int
 	width    int
@@ -84,6 +84,9 @@ func (v *logViewer) key(kind string) string { return "log:" + kind + ":" + strco
 
 func (v *logViewer) start(e *core.Env) tea.Cmd {
 	v.wrap = e.Deps.Config.UI.Wrap
+	if v.format == "" {
+		v.format = e.Deps.Config.Logs.Format
+	}
 	v.live = e.Deps.Config.Logs.TailMode == "live"
 	v.history = logs.NewHistory(e.Session, v.group.Name, v.pattern, e.Deps.Config.Logs.HistoryWindow.Duration, v.group.Created)
 	v.events, v.firstLoad, v.historyErr = nil, true, nil
@@ -178,7 +181,7 @@ func (v *logViewer) hints() []core.Hint {
 		h = append(h, core.Hint{Key: "space", Label: pause})
 	}
 	return append(h, core.Hint{Key: "↑/o", Label: "Older"}, core.Hint{Key: "e", Label: "Errors"}, core.Hint{Key: "f", Label: "Filter"},
-		core.Hint{Key: "w", Label: "Wrap"}, core.Hint{Key: "j", Label: "JSON"}, core.Hint{Key: "s", Label: "Streams"},
+		core.Hint{Key: "w", Label: "Wrap"}, core.Hint{Key: "j", Label: "Readable/JSON/raw"}, core.Hint{Key: "s", Label: "Streams"},
 		core.Hint{Key: "m", Label: "Poll/Live"}, core.Hint{Key: "O", Label: "Console"}, core.Hint{Key: "b", Label: "Background"}, core.Hint{Key: "esc", Label: "Close"})
 }
 
@@ -293,8 +296,9 @@ func (v *logViewer) key2(e *core.Env, m tea.KeyMsg) tea.Cmd {
 		v.wrap = !v.wrap
 		v.renderID = ""
 	case "j":
-		v.pretty = !v.pretty
+		v.format = cycle(logFormats, v.format, 1)
 		v.renderID = ""
+		return e.Toast("Log view: "+v.format, theme.ToneNormal)
 	case "s":
 		v.streams = !v.streams
 		v.renderID = ""
@@ -347,7 +351,7 @@ func evKey(e logs.Event) string { return e.Time.String() + "\x1f" + e.Stream + "
 
 // renderAll turns events into visual lines for width w (cached).
 func (v *logViewer) renderAll(w int) []string {
-	id := fmt.Sprint(w, v.wrap, v.streams, v.pretty, v.hoff, len(v.events))
+	id := fmt.Sprint(w, v.wrap, v.streams, v.format, v.hoff, len(v.events))
 	if len(v.events) > 0 {
 		id += v.events[0].Time.String()
 	}
@@ -367,12 +371,22 @@ func (v *logViewer) renderAll(w int) []string {
 			pw += 23
 		}
 		msg := safety.Redact(strings.TrimRight(ev.Message, "\n"))
-		if v.pretty {
-			msg = prettyJSON(msg)
+		var src []string
+		switch v.format {
+		case "readable":
+			src = readable(msg)
+		case "json":
+			for _, l := range strings.Split(prettyJSON(msg), "\n") {
+				src = append(src, core.ColorLine(l))
+			}
+		default:
+			for _, l := range strings.Split(msg, "\n") {
+				src = append(src, core.ColorLine(l))
+			}
 		}
 		indent := strings.Repeat(" ", pw)
 		first := true
-		for _, raw := range strings.Split(msg, "\n") {
+		for _, raw := range src {
 			var parts []string
 			if v.wrap {
 				parts = components.WrapLines(raw, max(10, w-pw))
@@ -384,7 +398,7 @@ func (v *logViewer) renderAll(w int) []string {
 				if first {
 					lead, first = prefix, false
 				}
-				out = append(out, lead+core.ColorLine(p))
+				out = append(out, lead+p)
 			}
 		}
 	}

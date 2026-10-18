@@ -77,14 +77,23 @@ func (m *Meter) OnWarn(f func(string)) {
 	m.mu.Unlock()
 }
 
+// serviceRPS caps services whose AWS quota is below the general limit.
+var serviceRPS = map[string]float64{
+	"CloudTrail": 2, // LookupEvents: 2 requests/second per account and region
+}
+
 func (m *Meter) limiter(service string) *rate.Limiter {
-	if m.limits.RequestsPerSecond <= 0 {
+	rps := m.limits.RequestsPerSecond
+	if cap, ok := serviceRPS[service]; ok && (rps <= 0 || cap < rps) {
+		rps = cap
+	}
+	if rps <= 0 {
 		return nil
 	}
 	l, ok := m.limiters[service]
 	if !ok {
-		burst := max(1, int(m.limits.RequestsPerSecond))
-		l = rate.NewLimiter(rate.Limit(m.limits.RequestsPerSecond), burst)
+		burst := max(1, int(rps))
+		l = rate.NewLimiter(rate.Limit(rps), burst)
 		m.limiters[service] = l
 	}
 	return l

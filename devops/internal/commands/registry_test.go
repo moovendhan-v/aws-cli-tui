@@ -168,3 +168,26 @@ func TestSearchFindsDiagnosticActions(t *testing.T) {
 		t.Errorf("exact match not first: %v", got)
 	}
 }
+
+func TestDatabaseConnectChain(t *testing.T) {
+	r := builtin(t)
+	run := &Runner{Registry: r, Exec: executor.NewManager(2, nil)}
+	p, err := run.Prepare(r.Get("db.connect.postgres"), map[string]string{"instance_id": "i-0123456789abcdef0",
+		"db_host": "orders.abc.ap-southeast-2.rds.amazonaws.com", "db_user": "app", "db_name": "orders"},
+		auth.Context{Profile: "dev", Region: "ap-southeast-2"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Then == nil {
+		t.Fatal("expected a follow-up client")
+	}
+	if got := strings.Join(p.Then.Argv, " "); got != "psql -h 127.0.0.1 -p 15432 -U app -d orders" {
+		t.Fatalf("client argv = %q", got)
+	}
+	if !strings.Contains(strings.Join(p.Argv, " "), "host=orders.abc.ap-southeast-2.rds.amazonaws.com,portNumber=5432,localPortNumber=15432") {
+		t.Fatalf("tunnel argv = %v", p.Argv)
+	}
+	if _, err := run.Prepare(r.Get("db.client.mysql"), map[string]string{"host": "db", "user": "-e DROP"}, auth.Context{}); err == nil {
+		t.Fatal("option injection via user should be rejected")
+	}
+}

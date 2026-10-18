@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	sdk "github.com/aws/aws-sdk-go-v2/service/rds"
@@ -19,6 +20,19 @@ type Instance struct {
 	Port                               int32
 	MultiAZ, Public, Encrypted         bool
 	AZ, Cluster                        string
+	DBName, MasterUser, VPC            string
+}
+
+// Client returns the interactive client family for the engine ("postgres",
+// "mysql" or "" when this tool has no client for it).
+func (i Instance) Client() string {
+	switch {
+	case strings.Contains(i.Engine, "postgres"):
+		return "postgres"
+	case strings.Contains(i.Engine, "mysql"), strings.Contains(i.Engine, "mariadb"):
+		return "mysql"
+	}
+	return ""
 }
 
 func (i Instance) EndpointLabel() string {
@@ -68,6 +82,10 @@ func convert(d types.DBInstance) Instance {
 		Class: aws.ToString(d.DBInstanceClass), AZ: aws.ToString(d.AvailabilityZone),
 		Cluster: aws.ToString(d.DBClusterIdentifier),
 		MultiAZ: aws.ToBool(d.MultiAZ), Public: aws.ToBool(d.PubliclyAccessible), Encrypted: aws.ToBool(d.StorageEncrypted),
+		DBName: aws.ToString(d.DBName), MasterUser: aws.ToString(d.MasterUsername),
+	}
+	if d.DBSubnetGroup != nil {
+		i.VPC = aws.ToString(d.DBSubnetGroup.VpcId)
 	}
 	if d.Endpoint != nil {
 		i.Endpoint = aws.ToString(d.Endpoint.Address)

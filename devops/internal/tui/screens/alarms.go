@@ -67,7 +67,7 @@ func (v *alarmView) Capturing() bool       { return false }
 func (v *alarmView) Back(e *core.Env) bool { return false }
 
 func (v *alarmView) Hints() []core.Hint {
-	return []core.Hint{{Key: "m", Label: "Load chart $"}, {Key: "t", Label: "Time range"}, {Key: "o", Label: "Console"}, {Key: "esc", Label: "Back"}}
+	return []core.Hint{{Key: "F", Label: "Follow the error"}, {Key: "m", Label: "Load chart $"}, {Key: "t", Label: "Time range"}, {Key: "o", Label: "Console"}, {Key: "esc", Label: "Back"}}
 }
 
 var alarmRanges = []time.Duration{time.Hour, 6 * time.Hour, 24 * time.Hour, 3 * 24 * time.Hour}
@@ -104,6 +104,8 @@ func (v *alarmView) Update(e *core.Env, msg tea.Msg) tea.Cmd {
 			if v.chartReady {
 				return v.loadChart(e)
 			}
+		case "F":
+			return e.Navigate("alarms", "trace:"+v.alarm.Name)
 		case "o":
 			return e.OpenURL(console.Alarm(e.Ctx().Region, v.alarm.Name), false)
 		case "y":

@@ -21,6 +21,7 @@ type Prepared struct {
 	Spec    executor.Spec
 	Argv    []string    // process / interactive
 	Steps   []*Prepared // workflow
+	Then    *Prepared   // interactive follow-up, started once Ready appears
 	cont    []bool
 }
 
@@ -89,6 +90,17 @@ func (r *Runner) Prepare(c *Command, values map[string]string, actx auth.Context
 				p.Argv = append(p.Argv, "--profile", actx.Profile)
 			}
 			p.Argv = append(p.Argv, "--region", actx.Region)
+		}
+		if t := c.Execution.Then; t != nil {
+			sv := map[string]string{}
+			for k, v := range t.With {
+				sv[k] = expand(v, all)
+			}
+			tp, err := r.Prepare(r.Registry.Get(t.Command), sv, actx)
+			if err != nil {
+				return nil, fmt.Errorf("then (%s): %w", t.Command, err)
+			}
+			p.Then = tp
 		}
 	case TypeWorkflow:
 		p.Spec.Kind = executor.KindWorkflow

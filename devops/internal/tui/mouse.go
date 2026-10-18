@@ -88,9 +88,9 @@ func (m *Model) mouseNav(x, y int, press, double, wheelUp, wheelDown bool) tea.C
 		return m.moveNav(-1)
 	case wheelDown:
 		return m.moveNav(1)
-	case press && line == m.g.profileLine:
+	case press && (line == m.g.profileLine || line == m.g.profileLine-1):
 		return m.openDropdown("profile")
-	case press && line == m.g.regionLine:
+	case press && (line == m.g.regionLine || line == m.g.regionLine-1):
 		return m.openDropdown("region")
 	case press:
 		if i, ok := m.g.navLine[line]; ok {

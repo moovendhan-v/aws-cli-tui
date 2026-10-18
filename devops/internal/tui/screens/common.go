@@ -156,12 +156,35 @@ func kv(w int, pairs ...[2]string) string {
 	return strings.Join(lines, "\n")
 }
 
-func hintLine(hints []core.Hint) string {
+// hintLines lays hints out across as many lines as needed for width w.
+func hintLines(hints []core.Hint, w int) string {
 	var parts []string
 	for _, h := range hints {
 		parts = append(parts, theme.Key.Render(h.Key)+" "+theme.Dim.Render(h.Label))
 	}
-	return strings.Join(parts, "   ")
+	return pack(parts, "   ", w)
+}
+
+// pack joins styled items with sep, starting a new line instead of cutting
+// an item off at the edge.
+func pack(items []string, sep string, w int) string {
+	var lines []string
+	cur := ""
+	for _, it := range items {
+		switch {
+		case cur == "":
+			cur = it
+		case lipgloss.Width(cur)+len(sep)+lipgloss.Width(it) <= w:
+			cur += sep + it
+		default:
+			lines = append(lines, cur)
+			cur = it
+		}
+	}
+	if cur != "" {
+		lines = append(lines, cur)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // tableMouse applies wheel and click to a table whose header is on line top.

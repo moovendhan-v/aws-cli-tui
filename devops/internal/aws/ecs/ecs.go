@@ -24,6 +24,7 @@ type Service struct {
 	Desired, Running, Pending, FailedTasks          int32
 	ExecEnabled                                     bool
 	LastEvent                                       string
+	TargetGroups                                    []string
 }
 
 type Container struct {
@@ -107,6 +108,11 @@ func convertService(sv types.Service) Service {
 	}
 	if len(sv.Events) > 0 {
 		o.LastEvent = aws.ToString(sv.Events[0].Message)
+	}
+	for _, lb := range sv.LoadBalancers {
+		if a := aws.ToString(lb.TargetGroupArn); a != "" {
+			o.TargetGroups = append(o.TargetGroups, a)
+		}
 	}
 	return o
 }

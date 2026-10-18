@@ -15,6 +15,15 @@ import (
 var allowlist = map[string]bool{
 	"aws":                    true,
 	"session-manager-plugin": true,
+	"psql":                   true, // PostgreSQL client (interactive SQL shells)
+	"mysql":                  true, // MySQL / MariaDB client
+}
+
+// installHint helps when an allowlisted program is missing.
+var installHint = map[string]string{
+	"psql":  " — install it with: brew install libpq && brew link --force libpq",
+	"mysql": " — install it with: brew install mysql-client",
+	"aws":   " — install the AWS CLI v2",
 }
 
 // Allowed reports whether a program may be launched.
@@ -36,7 +45,7 @@ func Command(ctx context.Context, argv []string) (*exec.Cmd, error) {
 	}
 	path, err := exec.LookPath(argv[0])
 	if err != nil {
-		return nil, fmt.Errorf("%s is not installed or not on PATH", argv[0])
+		return nil, fmt.Errorf("%s is not installed or not on PATH%s", argv[0], installHint[argv[0]])
 	}
 	return exec.CommandContext(ctx, path, argv[1:]...), nil
 }

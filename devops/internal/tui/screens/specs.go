@@ -148,10 +148,15 @@ func RDSInstances() *Level {
 			if !d.Encrypted {
 				enc = theme.Warn.Render("no — storage not encrypted")
 			}
-			return lines([2]string{"Endpoint", d.EndpointLabel()}, [2]string{"Cluster", d.Cluster}, [2]string{"AZ", d.AZ},
+			return lines([2]string{"Endpoint", d.EndpointLabel()}, [2]string{"Database", d.DBName}, [2]string{"Master user", d.MasterUser},
+				[2]string{"VPC", d.VPC}, [2]string{"Cluster", d.Cluster}, [2]string{"AZ", d.AZ},
 				[2]string{"Public", public}, [2]string{"Encrypted", enc})
 		},
+		Open: func(e *core.Env, r components.Row) (Viewer, tea.Cmd) { return nil, connectDB(e, r.Data.(rds.Instance)) },
 		Actions: []Action{
+			{Key: "x", Label: "SQL shell", Run: func(e *core.Env, r components.Row) tea.Cmd {
+				return connectDB(e, r.Data.(rds.Instance))
+			}},
 			{Key: "k", Label: "Connectivity check", Run: func(e *core.Env, r components.Row) tea.Cmd {
 				return e.RunCommandID("workflow.db.connectivity", map[string]string{"db_instance_id": r.Key})
 			}},
@@ -167,6 +172,38 @@ func RDSInstances() *Level {
 		Empty: "No RDS instances in this region.",
 		Link:  func(region string, r components.Row) string { return console.RDSInstance(region, r.Key) },
 	}
+}
+
+// connectDB asks how to reach the database, then opens a SQL shell in the
+// Terminals panel (through an SSM tunnel, or directly over VPN/public access).
+func connectDB(e *core.Env, d rds.Instance) tea.Cmd {
+	client := d.Client()
+	if client == "" {
+		return e.Toast("No SQL shell for engine "+d.Engine+" yet (PostgreSQL, MySQL, MariaDB and Aurora are supported)", theme.ToneWarn)
+	}
+	if d.Endpoint == "" {
+		return e.Toast("This database has no endpoint yet (status "+d.Status+")", theme.ToneWarn)
+	}
+	dbname := d.DBName
+	if dbname == "" {
+		dbname = map[string]string{"postgres": "postgres", "mysql": "mysql"}[client]
+	}
+	items := []core.PickItem{
+		{Label: "Through a bastion (SSM tunnel)", Detail: "private databases — pick an SSM-managed instance in the same VPC", Value: "tunnel"},
+		{Label: "Directly", Detail: "you are on a VPN / the database is publicly reachable", Value: "direct"},
+	}
+	cur := "tunnel"
+	if d.Public {
+		cur = "direct"
+	}
+	return e.Open(core.NewPicker("Connect to "+d.ID+" ("+d.Engine+")", items, cur, func(it core.PickItem) tea.Cmd {
+		if it.Value == "direct" {
+			return e.RunCommandID("db.client."+client, map[string]string{"host": d.Endpoint, "port": fmt.Sprint(d.Port),
+				"user": d.MasterUser, "dbname": dbname, "#form": "1"})
+		}
+		return e.RunCommandID("db.connect."+client, map[string]string{"db_host": d.Endpoint, "db_port": fmt.Sprint(d.Port),
+			"db_user": d.MasterUser, "db_name": dbname, "#form": "1"})
+	}))
 }
 
 // ───────────────────────────── Lambda ─────────────────────────────
@@ -195,13 +232,14 @@ func LambdaFunctions() *Level {
 			return lines([2]string{"Handler", f.Handler}, [2]string{"Code size", components.Bytes(f.CodeSize)})
 		},
 		Actions: []Action{
-			{Key: "i", Label: "Configuration", Run: func(e *core.Env, r components.Row) tea.Cmd {
-				return e.RunCommandID("lambda.function.config", map[string]string{"function_name": r.Key})
+			{Key: "i", Label: "Invoke", Run: func(e *core.Env, r components.Row) tea.Cmd {
+				return e.RunCommandID("lambda.invoke", map[string]string{"function_name": r.Key, "#form": "1"})
 			}},
 			{Key: "l", Label: "Logs", Run: func(e *core.Env, r components.Row) tea.Cmd {
 				return e.Navigate("logs", "open:/aws/lambda/"+r.Key)
 			}},
 		},
+		Open:  func(e *core.Env, r components.Row) (Viewer, tea.Cmd) { return newLambdaView(e, r.Key) },
 		Empty: "No Lambda functions in this region.",
 		Link:  func(region string, r components.Row) string { return console.Lambda(region, r.Key) },
 	}
@@ -253,6 +291,12 @@ func targetGroups(lbName, lbARN string) *Level {
 			return rows, err
 		}),
 		Child: func(r components.Row) *Level { tg := r.Data.(networking.TargetGroup); return targets(tg.Name, tg.ARN) },
+		Actions: []Action{
+			{Key: "F", Label: "Follow the error", View: func(e *core.Env, r components.Row) (Viewer, tea.Cmd) {
+				tg := r.Data.(networking.TargetGroup)
+				return newTraceView(e, "elb", traceStart{TargetARN: tg.ARN, TargetName: tg.Name})
+			}},
+		},
 		Empty: "No target groups attached.",
 		Link:  func(region string, r components.Row) string { return console.TargetGroup(region, r.Key) },
 	}
@@ -303,6 +347,11 @@ func Alarms() *Level {
 		},
 		Open: func(e *core.Env, r components.Row) (Viewer, tea.Cmd) {
 			return newAlarmView(e, r.Data.(metrics.Alarm))
+		},
+		Actions: []Action{
+			{Key: "F", Label: "Follow the error", View: func(e *core.Env, r components.Row) (Viewer, tea.Cmd) {
+				return newTraceView(e, "alarms", traceStart{Alarm: r.Key})
+			}},
 		},
 		Empty: "No CloudWatch alarms in this region.",
 		Link:  func(region string, r components.Row) string { return console.Alarm(region, r.Key) },

@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -20,7 +21,6 @@ import (
 	ec2sdk "github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	ecssdk "github.com/aws/aws-sdk-go-v2/service/ecs"
-	lambdasdk "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"devops/internal/aws/auth"
@@ -332,7 +332,9 @@ func Default() *Table {
 			if err != nil {
 				return nil, err
 			}
-			return renderSeries(p.str("metric"), pts), nil
+			return metrics.Series{Namespace: p.str("namespace"), Metric: p.str("metric"),
+				Dimensions: map[string]string{p.str("dimension_name"): p.str("dimension_value")},
+				Since:      since, Period: period, Points: pts}, nil
 		}})
 
 	// RDS
@@ -369,7 +371,33 @@ func Default() *Table {
 		Run: func(ctx context.Context, s *auth.Session, _ Params) (any, error) { return lambda.List(ctx, s) }})
 	t.add(Operation{Service: "lambda", Name: "GetFunctionConfiguration", Risk: safety.ReadOnly, Required: []string{"function_name"},
 		Run: func(ctx context.Context, s *auth.Session, p Params) (any, error) {
-			return s.Lambda().GetFunctionConfiguration(ctx, &lambdasdk.GetFunctionConfigurationInput{FunctionName: aws.String(p.str("function_name"))})
+			// Environment values can hold secrets, so only names are returned.
+			return lambda.Describe(ctx, s, p.str("function_name"))
+		}})
+	t.add(Operation{Service: "lambda", Name: "Invoke", Risk: safety.Mutating, Required: []string{"function_name"}, Optional: []string{"payload"},
+		Run: func(ctx context.Context, s *auth.Session, p Params) (any, error) {
+			payload := p.str("payload")
+			if payload == "" {
+				payload = "{}"
+			}
+			if !json.Valid([]byte(payload)) {
+				return nil, fmt.Errorf("payload must be valid JSON")
+			}
+			r, err := lambda.Invoke(ctx, s, p.str("function_name"), payload)
+			if err != nil {
+				return nil, err
+			}
+			lines := []string{fmt.Sprintf("status %d · %s", r.StatusCode, r.Duration.Round(time.Millisecond))}
+			if r.FunctionError != "" {
+				lines = append(lines, "✗ function error: "+r.FunctionError)
+			}
+			lines = append(lines, "", "━━ Response")
+			lines = append(lines, strings.Split(r.Payload, "\n")...)
+			if r.LogTail != "" {
+				lines = append(lines, "", "━━ Log (last 4 KB)")
+				lines = append(lines, strings.Split(strings.TrimRight(r.LogTail, "\n"), "\n")...)
+			}
+			return lines, nil
 		}})
 
 	// CloudFormation
@@ -498,30 +526,4 @@ func addCICD(t *Table) {
 			}
 			return map[string]string{"build_id": aws.ToString(out.Build.Id), "status": string(out.Build.BuildStatus)}, nil
 		}})
-}
-
-// renderSeries turns datapoints into a readable text sparkline table.
-func renderSeries(metric string, pts []metrics.Point) []string {
-	if len(pts) == 0 {
-		return []string{"No datapoints for " + metric + " in this period."}
-	}
-	bars := []rune("▁▂▃▄▅▆▇█")
-	hi := 0.0
-	for _, p := range pts {
-		hi = max(hi, p.Maximum)
-	}
-	var spark strings.Builder
-	for _, p := range pts {
-		i := 0
-		if hi > 0 {
-			i = int(p.Average / hi * float64(len(bars)-1))
-		}
-		spark.WriteRune(bars[max(0, min(i, len(bars)-1))])
-	}
-	lines := []string{metric + "  " + spark.String(), ""}
-	lines = append(lines, fmt.Sprintf("%-8s %12s %12s  %s", "TIME", "AVERAGE", "MAXIMUM", "UNIT"))
-	for _, p := range pts {
-		lines = append(lines, fmt.Sprintf("%-8s %12.2f %12.2f  %s", p.Time.Local().Format("15:04"), p.Average, p.Maximum, p.Unit))
-	}
-	return lines
 }

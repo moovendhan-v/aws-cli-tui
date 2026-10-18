@@ -87,3 +87,15 @@ commands:
     parameters:
       - { name: function_name, type: resource, resource: lambda_function, required: true }
     risk: read_only
+
+  - id: lambda.invoke
+    name: Invoke Lambda Function
+    category: Lambda
+    description: Run a function synchronously with a JSON test event; shows the response and the last 4 KB of its log
+    tags: [lambda, invoke, test, event, run, debug]
+    execution: { type: aws_sdk, service: lambda, operation: Invoke }
+    parameters:
+      - { name: function_name, type: resource, resource: lambda_function, required: true }
+      - { name: payload, type: string, default: '{}', description: 'JSON event, e.g. {"id": 42}' }
+    risk: mutating
+    timeout: 5m

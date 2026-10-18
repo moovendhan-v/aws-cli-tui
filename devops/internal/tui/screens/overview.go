@@ -29,7 +29,7 @@ func (o *Overview) ID() string      { return "overview" }
 func (o *Overview) Capturing() bool { return false }
 
 func (o *Overview) Hints() []core.Hint {
-	return []core.Hint{{Key: "r", Label: "Refresh"}, {Key: "1-9", Label: "Open pin"}, {Key: "L", Label: "SSO login"}}
+	return []core.Hint{{Key: "r", Label: "Refresh"}, {Key: "F", Label: "Follow firing alarm"}, {Key: "1-9", Label: "Open pin"}, {Key: "L", Label: "SSO login"}}
 }
 
 // healthStrip summarises the signals that usually mean "look here first".
@@ -101,6 +101,12 @@ func (o *Overview) Update(e *core.Env, msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		if m.String() == "r" && !o.loading {
 			return o.load(e, true)
+		}
+		if m.String() == "F" {
+			if o.sum != nil && o.sum.ActiveAlarms.Key != "" {
+				return e.Navigate("alarms", "trace:"+o.sum.ActiveAlarms.Key)
+			}
+			return e.Toast("No alarm is firing — nothing to follow", theme.ToneOK)
 		}
 		if k := m.String(); len(k) == 1 && k[0] >= '1' && k[0] <= '9' {
 			pins := e.Pins()

@@ -82,6 +82,14 @@ func (l *Logs) Init(e *core.Env) tea.Cmd {
 
 // Focus filters the list, or opens a group directly with "open:<name>".
 func (l *Logs) Focus(e *core.Env, q string) tea.Cmd {
+	if name, ok := strings.CutPrefix(q, "errors:"); ok {
+		if l.viewer != nil {
+			l.viewer.stop(e)
+		}
+		l.viewer = newLogViewer(logs.Group{Name: name})
+		l.viewer.pattern = errorPattern
+		return l.viewer.start(e)
+	}
 	if name, ok := strings.CutPrefix(q, "open:"); ok {
 		if l.viewer != nil {
 			l.viewer.stop(e)

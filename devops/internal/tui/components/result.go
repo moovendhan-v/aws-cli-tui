@@ -9,6 +9,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"devops/internal/aws/metrics"
 	"devops/internal/safety"
 	"devops/internal/tui/theme"
 )
@@ -68,6 +69,9 @@ func empty(v any) bool {
 
 // RenderResult renders v in the given view as display lines of width w.
 func RenderResult(v any, view string, w int) []string {
+	if s, ok := v.(metrics.Series); ok && (view == "table" || view == "cards") {
+		return seriesView(s, view, w)
+	}
 	data := Normalize(v)
 	if s, ok := data.([]any); ok && allStrings(s) {
 		lines := make([]string, len(s))
@@ -336,4 +340,62 @@ func join(prefix, k string) string {
 		return k
 	}
 	return prefix + "." + k
+}
+
+// seriesView draws a metric as a chart (table view) or a datapoint table (cards).
+func seriesView(s metrics.Series, view string, w int) []string {
+	var dims []string
+	for k, v := range s.Dimensions {
+		dims = append(dims, k+"="+v)
+	}
+	sort.Strings(dims)
+	title := theme.Title.Render(s.Namespace+" / "+s.Metric) + theme.Dim.Render("  "+strings.Join(dims, " ")+
+		fmt.Sprintf("  · last %s · %s periods", s.Since, s.Period))
+	if len(s.Points) == 0 {
+		return []string{title, "", theme.Dim.Render("No datapoints in this period (the resource may be stopped or the metric not published).")}
+	}
+	unit := s.Points[0].Unit
+	suffix := ""
+	if unit == "Percent" {
+		suffix = "%"
+	}
+	if view == "cards" {
+		out := []string{title, ""}
+		for _, l := range s.TextLines() {
+			out = append(out, theme.Body.Render(l))
+		}
+		return out
+	}
+	last, avg, lo, hi := s.Stats()
+	st := theme.Title
+	if suffix == "%" {
+		switch {
+		case hi >= 85:
+			st = theme.Bad
+		case hi >= 65:
+			st = theme.Warn
+		default:
+			st = theme.OK
+		}
+	}
+	vals := make([]float64, len(s.Points))
+	peakAt := s.Points[0]
+	for i, p := range s.Points {
+		vals[i] = p.Average
+		if p.Maximum > peakAt.Maximum {
+			peakAt = p
+		}
+	}
+	f := func(v float64) string { return fmt.Sprintf("%.1f%s", v, suffix) }
+	stats := theme.Dim.Render("now ") + theme.Strong.Render(f(last)) + theme.Dim.Render("   avg ") + theme.Body.Render(f(avg)) +
+		theme.Dim.Render("   min ") + theme.Body.Render(f(lo)) + theme.Dim.Render("   peak ") + st.Render(f(hi)) +
+		theme.Dim.Render(" at "+peakAt.Time.Local().Format("15:04"))
+	out := []string{title, stats, ""}
+	out = append(out, LineChart([]Series{{Values: vals, Style: st}}, w, 12, suffix, nil)...)
+	out = append(out, theme.Dim.Render(Pad(s.Points[0].Time.Local().Format("01-02 15:04"), w-11)+s.Points[len(s.Points)-1].Time.Local().Format("01-02 15:04")))
+	if suffix == "%" {
+		out = append(out, "", theme.Dim.Render("current  ")+Gauge(last, min(40, w-20)))
+	}
+	out = append(out, "", theme.Dim.Render("v shows the datapoints as a table"))
+	return out
 }

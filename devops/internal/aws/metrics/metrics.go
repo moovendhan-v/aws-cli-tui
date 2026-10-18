@@ -198,3 +198,93 @@ func EC2CPU(ctx context.Context, s *auth.Session, ids []string, since time.Durat
 	}
 	return out, nil
 }
+
+// Series is a metric over time, returned by metric commands so the UI can
+// draw it as a chart.
+type Series struct {
+	Namespace, Metric string
+	Dimensions        map[string]string
+	Since, Period     time.Duration
+	Points            []Point
+}
+
+// Stats returns last, average, minimum and maximum of the plotted values.
+func (s Series) Stats() (last, avg, lo, hi float64) {
+	if len(s.Points) == 0 {
+		return
+	}
+	lo = s.Points[0].Average
+	for _, p := range s.Points {
+		avg += p.Average
+		lo = min(lo, p.Average)
+		hi = max(hi, p.Maximum, p.Average)
+	}
+	return s.Points[len(s.Points)-1].Average, avg / float64(len(s.Points)), lo, hi
+}
+
+// TextLines is the plain-text form used for raw output and history.
+func (s Series) TextLines() []string {
+	if len(s.Points) == 0 {
+		return []string{"No datapoints for " + s.Metric + " in this period."}
+	}
+	lines := []string{fmt.Sprintf("%-8s %12s %12s  %s", "TIME", "AVERAGE", "MAXIMUM", "UNIT")}
+	for _, p := range s.Points {
+		lines = append(lines, fmt.Sprintf("%-8s %12.2f %12.2f  %s", p.Time.Local().Format("15:04"), p.Average, p.Maximum, p.Unit))
+	}
+	return lines
+}
+
+// Spec names one metric/statistic for Multi.
+type Spec struct {
+	Metric, Stat string
+}
+
+// Multi fetches several metrics of one resource in a single GetMetricData
+// call. Results are keyed by "Metric/Stat"; each Point.Average holds the value.
+func Multi(ctx context.Context, s *auth.Session, namespace string, dims map[string]string, specs []Spec, since, period time.Duration) (map[string][]Point, error) {
+	end := time.Now()
+	var dd []types.Dimension
+	for k, v := range dims {
+		dd = append(dd, types.Dimension{Name: aws.String(k), Value: aws.String(v)})
+	}
+	in := &sdk.GetMetricDataInput{StartTime: aws.Time(end.Add(-since)), EndTime: aws.Time(end), ScanBy: types.ScanByTimestampAscending}
+	for i, sp := range specs {
+		in.MetricDataQueries = append(in.MetricDataQueries, types.MetricDataQuery{
+			Id: aws.String(fmt.Sprintf("q%d", i)),
+			MetricStat: &types.MetricStat{Period: aws.Int32(int32(period.Seconds())), Stat: aws.String(sp.Stat),
+				Metric: &types.Metric{Namespace: aws.String(namespace), MetricName: aws.String(sp.Metric), Dimensions: dd}},
+		})
+	}
+	out := map[string][]Point{}
+	p := sdk.NewGetMetricDataPaginator(s.CloudWatch(), in)
+	for p.HasMorePages() {
+		page, err := p.NextPage(ctx)
+		if err != nil {
+			return out, err
+		}
+		for _, r := range page.MetricDataResults {
+			var i int
+			fmt.Sscanf(aws.ToString(r.Id), "q%d", &i)
+			if i >= len(specs) {
+				continue
+			}
+			key := specs[i].Metric + "/" + specs[i].Stat
+			for j, v := range r.Values {
+				out[key] = append(out[key], Point{Time: r.Timestamps[j], Average: v, Maximum: v})
+			}
+		}
+	}
+	return out, nil
+}
+
+// AlarmByName fetches one metric alarm.
+func AlarmByName(ctx context.Context, s *auth.Session, name string) (Alarm, error) {
+	out, err := s.CloudWatch().DescribeAlarms(ctx, &sdk.DescribeAlarmsInput{AlarmNames: []string{name}})
+	if err != nil {
+		return Alarm{}, err
+	}
+	if len(out.MetricAlarms) == 0 {
+		return Alarm{}, fmt.Errorf("alarm %q not found (composite alarms can't be traced)", name)
+	}
+	return convertAlarm(out.MetricAlarms[0]), nil
+}

@@ -168,37 +168,76 @@ func (m *Model) nav(x, y, w, h int) string {
 }
 
 // navItems renders the navigation list, scrolled to keep the selection visible.
+// navItems renders the navigation. With spacing on, every label has a blank
+// line above and below it; the selected item is drawn as a 3-line block
+// (padding, label, padding) so its text sits in the middle. Each label owns
+// the blank line below it as extra click area.
 func (m *Model) navItems(w, h int) []string {
 	type entry struct {
-		text string
-		idx  int
+		text  string
+		idx   int  // navigation index this line belongs to (-1 = not clickable)
+		label bool // the label line itself
 	}
 	running := m.env.Deps.Exec.RunningCount()
+	groups := 2
+	gap := false
+	switch m.env.Deps.Config.UI.NavSpacing {
+	case "spacious":
+		gap = true
+	case "auto", "":
+		gap = h >= 2*len(app.Navigation)+2*groups+1
+	}
+	selStyle := theme.NavItem
+	if m.focus == focusNav {
+		selStyle = theme.NavActive
+	} else {
+		selStyle = lipgloss.NewStyle().Background(theme.Bar).Foreground(theme.Blue).Bold(true)
+	}
 	var all []entry
+	if gap {
+		all = append(all, entry{idx: -1}) // padding above the first item
+	}
 	for i, n := range app.Navigation {
 		label := n.Icon + "  " + n.Label
 		if n.ID == "activity" && running > 0 {
 			label = fmt.Sprintf("%s (%d)", label, running)
 		}
-		line := components.Pad(" "+label, w)
-		switch {
-		case i == m.navIdx && m.focus == focusNav:
-			line = theme.NavActive.Render(line)
-		case i == m.navIdx:
-			line = lipgloss.NewStyle().Background(theme.Bar).Foreground(theme.Blue).Bold(true).Render(line)
-		default:
-			line = theme.NavItem.Render(line)
+		style := theme.NavItem
+		if i == m.navIdx {
+			style = selStyle
 		}
-		all = append(all, entry{line, i})
+		all = append(all, entry{style.Render(components.Pad(" "+label, w)), i, true})
+		if gap {
+			all = append(all, entry{idx: i})
+		}
 		if n.ID == "builds" || n.ID == "terminals" {
-			all = append(all, entry{"", -1})
+			if gap {
+				all = append(all, entry{theme.Dim.Render("  " + strings.Repeat("─", max(0, w-4))), -1, false}, entry{idx: -1})
+			} else {
+				all = append(all, entry{idx: -1})
+			}
 		}
 	}
-	start := 0
+	// Paint the padding lines directly above and below the selected label.
+	sel := strings.Repeat(" ", w)
 	for i, en := range all {
-		if en.idx == m.navIdx && i >= h {
-			start = i - h + 1
+		if en.label && en.idx == m.navIdx && gap {
+			for _, j := range []int{i - 1, i + 1} {
+				if j >= 0 && j < len(all) && !all[j].label && all[j].text == "" {
+					all[j].text = selStyle.Render(sel)
+				}
+			}
 		}
+	}
+	// Scroll so the selected block stays visible.
+	start, last := 0, 0
+	for i, en := range all {
+		if en.idx == m.navIdx {
+			last = i
+		}
+	}
+	if last >= h {
+		start = last - h + 1
 	}
 	var out []string
 	for i := start; i < len(all) && len(out) < h; i++ {

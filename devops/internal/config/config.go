@@ -38,10 +38,13 @@ type UI struct {
 	// Density sets default spacing: compact, comfortable or spacious.
 	Density string `yaml:"density"`
 	// Padding overrides the density's horizontal panel padding (-1 = density default).
-	Padding  int  `yaml:"padding"`
-	NavWidth int  `yaml:"nav_width"`
-	Mouse    bool `yaml:"mouse"`
-	Wrap     bool `yaml:"wrap"`
+	Padding  int `yaml:"padding"`
+	NavWidth int `yaml:"nav_width"`
+	// NavSpacing: auto (blank line between sidebar items when there is room),
+	// spacious (always) or compact (never).
+	NavSpacing string `yaml:"nav_spacing"`
+	Mouse      bool   `yaml:"mouse"`
+	Wrap       bool   `yaml:"wrap"`
 	// OutputFormat is the default result view: table, cards, yaml or json.
 	OutputFormat string `yaml:"output_format"`
 	// EmbeddedSessions runs SSM/ECS Exec/tunnels inside the layout.
@@ -112,6 +115,8 @@ type Logs struct {
 	PollInterval  Duration `yaml:"poll_interval"`
 	HistoryWindow Duration `yaml:"history_window"`
 	PageEvents    int      `yaml:"page_events"`
+	// Format is how log lines are shown first: readable, json or raw.
+	Format string `yaml:"format"`
 }
 
 type Overview struct {
@@ -164,14 +169,14 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		UI: UI{Theme: "dark", ShowCommandActivity: true, Density: "comfortable", Padding: -1, NavWidth: 28,
+		UI: UI{Theme: "dark", ShowCommandActivity: true, Density: "comfortable", Padding: -1, NavWidth: 30, NavSpacing: "auto",
 			Mouse: true, Wrap: true, OutputFormat: "table", EmbeddedSessions: true},
 		Limits: Limits{RequestsPerSecond: 10, WarnAPICalls: 2000, ConfirmBilled: true, MaxPreviewMB: 20},
 		Cache: Cache{Enabled: true, TTL: Duration{2 * time.Minute}, TTLs: map[string]Duration{
 			"ec2": {time.Minute}, "ecs": {time.Minute}, "taskdef": {10 * time.Minute}, "logs": {5 * time.Minute},
 			"s3": {5 * time.Minute}, "summary": {2 * time.Minute}, "pipelines": {15 * time.Second},
 		}},
-		Logs:     Logs{TailMode: "poll", PollInterval: Duration{3 * time.Second}, HistoryWindow: Duration{15 * time.Minute}, PageEvents: 500},
+		Logs:     Logs{TailMode: "poll", PollInterval: Duration{3 * time.Second}, HistoryWindow: Duration{15 * time.Minute}, PageEvents: 500, Format: "readable"},
 		Overview: Overview{TargetHealth: true},
 		Search:   Search{Fuzzy: true},
 		Execution: Execution{
@@ -189,7 +194,8 @@ ui:
   theme: dark
   density: comfortable      # compact | comfortable | spacious
   padding: -1               # panel padding override; -1 = density default
-  nav_width: 28
+  nav_width: 30
+  nav_spacing: auto         # auto | spacious | compact (space between sidebar items)
   mouse: true
   wrap: true                # wrap long lines in output and logs (w toggles)
   output_format: table      # table | cards | yaml | json (v cycles)
@@ -240,6 +246,7 @@ logs:
   poll_interval: 3s
   history_window: 15m       # how far back the first history load goes
   page_events: 500          # events per history page
+  format: readable          # readable | json | raw (j cycles in the viewer)
 
 overview:
   target_health: true       # checks up to 40 target groups (cached)
@@ -327,13 +334,23 @@ func (c *Config) validate() error {
 		return fmt.Errorf("ui.output_format must be table, cards, yaml or json")
 	}
 	if c.UI.NavWidth < 20 || c.UI.NavWidth > 40 {
-		c.UI.NavWidth = 28
+		c.UI.NavWidth = 30
+	}
+	switch c.UI.NavSpacing {
+	case "auto", "spacious", "compact":
+	default:
+		c.UI.NavSpacing = "auto"
 	}
 	if c.Logs.TailMode != "poll" && c.Logs.TailMode != "live" {
 		return fmt.Errorf("logs.tail_mode must be poll or live")
 	}
 	if c.Logs.PollInterval.Duration < time.Second {
 		c.Logs.PollInterval.Duration = time.Second
+	}
+	switch c.Logs.Format {
+	case "readable", "json", "raw":
+	default:
+		c.Logs.Format = "readable"
 	}
 	if c.Logs.PageEvents < 50 || c.Logs.PageEvents > 10000 {
 		c.Logs.PageEvents = 500

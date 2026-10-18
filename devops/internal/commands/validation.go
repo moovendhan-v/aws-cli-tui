@@ -122,6 +122,28 @@ func (r *Registry) validate(c *Command) error {
 }
 
 func (r *Registry) validateWorkflow(c *Command) error {
+	if t := c.Execution.Then; t != nil {
+		if c.Execution.Type != TypeInteractive || c.Execution.Ready == "" {
+			return errors.New("then: needs an interactive command with ready: set")
+		}
+		sub := r.byID[t.Command]
+		if sub == nil || sub.Execution.Type != TypeInteractive {
+			return fmt.Errorf("then: %q must be a registered interactive command", t.Command)
+		}
+		if sub.Risk.Level() > c.Risk.Level() {
+			return fmt.Errorf("then: %s has a higher risk than this command", sub.ID)
+		}
+		for k, v := range t.With {
+			if sub.Param(k) == nil {
+				return fmt.Errorf("then: %s has no parameter %q", sub.ID, k)
+			}
+			for _, m := range templateRe.FindAllStringSubmatch(v, -1) {
+				if c.Param(m[1]) == nil && !slices.Contains(builtins, m[1]) {
+					return fmt.Errorf("then: references undeclared parameter %q", m[1])
+				}
+			}
+		}
+	}
 	if c.Execution.Type != TypeWorkflow {
 		return nil
 	}

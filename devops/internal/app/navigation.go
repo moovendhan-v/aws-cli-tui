@@ -11,6 +11,7 @@ type NavItem struct {
 
 var Navigation = []NavItem{
 	{ID: "overview", Icon: "◎", Label: "Overview", Keywords: []string{"home", "dashboard", "summary"}},
+	{ID: "changes", Icon: "Δ", Label: "What Changed?", Keywords: []string{"cloudtrail", "changes", "audit", "who", "deploy", "incident", "timeline"}},
 	{ID: "ec2", Icon: "▣", Label: "EC2 Instances", Keywords: []string{"instances", "servers", "vm", "ssm", "session", "ssh"}},
 	{ID: "ecs", Icon: "◈", Label: "ECS Clusters", Keywords: []string{"containers", "services", "tasks", "fargate", "exec"}},
 	{ID: "rds", Icon: "◍", Label: "Databases", Keywords: []string{"rds", "db", "postgres", "mysql", "aurora"}},

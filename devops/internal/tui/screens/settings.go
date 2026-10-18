@@ -269,6 +269,8 @@ func preferences() []pref {
 				}
 				return strconv.Itoa(n)
 			}, nil),
+		choicePref("Appearance", "Sidebar spacing", "auto adds a blank line between sidebar items when the window is tall enough.",
+			[]string{"auto", "spacious", "compact"}, func(c *config.Config) *string { return &c.UI.NavSpacing }, nil),
 		intPref("Appearance", "Sidebar width", "Width of the left navigation.", []int{22, 24, 26, 28, 30, 32, 36, 40},
 			func(c *config.Config) *int { return &c.UI.NavWidth }, plain, nil),
 		boolPref("Appearance", "Mouse", "Click and scroll with the mouse. Hold Option/Shift to select text while it is on.",
@@ -319,6 +321,8 @@ func preferences() []pref {
 			func(c *config.Config) *config.Duration { return &c.Cache.TTL }),
 		boolPref("Data & caching", "Overview target health", "Check load balancer target health on the overview (up to 40 groups).",
 			func(c *config.Config) *bool { return &c.Overview.TargetHealth }, nil),
+		choicePref("Logs", "Log line format", "readable turns JSON logs into LEVEL message key=value; j cycles in the viewer.",
+			[]string{"readable", "json", "raw"}, func(c *config.Config) *string { return &c.Logs.Format }, nil),
 		choicePref("Logs", "Tail mode", "poll uses FilterLogEvents; live uses Live Tail (billed per session minute).",
 			[]string{"poll", "live"}, func(c *config.Config) *string { return &c.Logs.TailMode }, nil),
 		durPref("Logs", "Poll interval", "How often polling tails ask for new events.",
