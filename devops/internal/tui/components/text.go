@@ -97,3 +97,31 @@ func WrapLines(s string, w int) []string {
 
 // Strip removes ANSI styling.
 func Strip(s string) string { return ansi.Strip(s) }
+
+// Pack joins styled items with sep, starting a new line instead of cutting an
+// item off at the right edge.
+func Pack(items []string, sep string, w int) []string {
+	var lines []string
+	cur := ""
+	for _, it := range items {
+		switch {
+		case cur == "":
+			cur = it
+		case lipgloss.Width(cur)+len(sep)+lipgloss.Width(it) <= w:
+			cur += sep + it
+		default:
+			lines = append(lines, cur)
+			cur = it
+		}
+	}
+	if cur != "" {
+		lines = append(lines, cur)
+	}
+	return lines
+}
+
+// Hyperlink wraps text in an OSC 8 terminal hyperlink (Cmd/Ctrl+click opens
+// it in terminals that support links; others just show the text).
+func Hyperlink(url, text string) string {
+	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
+}

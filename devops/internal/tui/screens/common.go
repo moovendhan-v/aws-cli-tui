@@ -165,26 +165,9 @@ func hintLines(hints []core.Hint, w int) string {
 	return pack(parts, "   ", w)
 }
 
-// pack joins styled items with sep, starting a new line instead of cutting
-// an item off at the edge.
+// pack joins styled items with sep, wrapping instead of cutting items off.
 func pack(items []string, sep string, w int) string {
-	var lines []string
-	cur := ""
-	for _, it := range items {
-		switch {
-		case cur == "":
-			cur = it
-		case lipgloss.Width(cur)+len(sep)+lipgloss.Width(it) <= w:
-			cur += sep + it
-		default:
-			lines = append(lines, cur)
-			cur = it
-		}
-	}
-	if cur != "" {
-		lines = append(lines, cur)
-	}
-	return strings.Join(lines, "\n")
+	return strings.Join(components.Pack(items, sep, w), "\n")
 }
 
 // tableMouse applies wheel and click to a table whose header is on line top.

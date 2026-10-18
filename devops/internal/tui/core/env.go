@@ -29,6 +29,12 @@ type Screen interface {
 	Capturing() bool
 }
 
+// Linker screens and views return the AWS console URL for what is selected
+// (shown as a clickable footer link; Ctrl+O and o open it).
+type Linker interface {
+	ConsoleLink(e *Env) string
+}
+
 // Focuser screens accept a query routed from the global search bar.
 type Focuser interface {
 	Focus(e *Env, query string) tea.Cmd

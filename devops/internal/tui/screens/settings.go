@@ -269,8 +269,8 @@ func preferences() []pref {
 				}
 				return strconv.Itoa(n)
 			}, nil),
-		choicePref("Appearance", "Sidebar spacing", "auto adds a blank line between sidebar items when the window is tall enough.",
-			[]string{"auto", "spacious", "compact"}, func(c *config.Config) *string { return &c.UI.NavSpacing }, nil),
+		choicePref("Appearance", "Sidebar spacing", "compact (default) lists items tightly; auto/spacious add a blank line between them.",
+			[]string{"compact", "auto", "spacious"}, func(c *config.Config) *string { return &c.UI.NavSpacing }, nil),
 		intPref("Appearance", "Sidebar width", "Width of the left navigation.", []int{22, 24, 26, 28, 30, 32, 36, 40},
 			func(c *config.Config) *int { return &c.UI.NavWidth }, plain, nil),
 		boolPref("Appearance", "Mouse", "Click and scroll with the mouse. Hold Option/Shift to select text while it is on.",

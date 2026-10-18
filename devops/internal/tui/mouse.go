@@ -42,6 +42,10 @@ func (m *Model) handleMouse(msg tea.MouseMsg) tea.Cmd {
 		return nil
 	}
 
+	if press && y == g.footerY && g.link != "" && x >= g.linkX[0] && x < g.linkX[1] {
+		return m.env.OpenURL(g.link, false)
+	}
+
 	if g.search.contains(x, y) && press && m.modal == nil {
 		m.drop = nil
 		return m.openSearch()

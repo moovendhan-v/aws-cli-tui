@@ -370,6 +370,13 @@ func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 	case "ctrl+j":
 		m.focus = focusWorkspace
 		return m.navigateTo("activity")
+	case "ctrl+o":
+		if l, ok := scr.(core.Linker); ok {
+			if u := l.ConsoleLink(e); u != "" {
+				return e.OpenURL(u, false)
+			}
+		}
+		return e.Toast("Nothing selected that has a console page", theme.ToneDim)
 	}
 	if capturing {
 		return scr.Update(e, k)

@@ -169,7 +169,7 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		UI: UI{Theme: "dark", ShowCommandActivity: true, Density: "comfortable", Padding: -1, NavWidth: 30, NavSpacing: "auto",
+		UI: UI{Theme: "dark", ShowCommandActivity: true, Density: "comfortable", Padding: -1, NavWidth: 30, NavSpacing: "compact",
 			Mouse: true, Wrap: true, OutputFormat: "table", EmbeddedSessions: true},
 		Limits: Limits{RequestsPerSecond: 10, WarnAPICalls: 2000, ConfirmBilled: true, MaxPreviewMB: 20},
 		Cache: Cache{Enabled: true, TTL: Duration{2 * time.Minute}, TTLs: map[string]Duration{
@@ -195,7 +195,7 @@ ui:
   density: comfortable      # compact | comfortable | spacious
   padding: -1               # panel padding override; -1 = density default
   nav_width: 30
-  nav_spacing: auto         # auto | spacious | compact (space between sidebar items)
+  nav_spacing: compact      # compact | auto | spacious (space between sidebar items)
   mouse: true
   wrap: true                # wrap long lines in output and logs (w toggles)
   output_format: table      # table | cards | yaml | json (v cycles)
@@ -339,7 +339,7 @@ func (c *Config) validate() error {
 	switch c.UI.NavSpacing {
 	case "auto", "spacious", "compact":
 	default:
-		c.UI.NavSpacing = "auto"
+		c.UI.NavSpacing = "compact"
 	}
 	if c.Logs.TailMode != "poll" && c.Logs.TailMode != "live" {
 		return fmt.Errorf("logs.tail_mode must be poll or live")

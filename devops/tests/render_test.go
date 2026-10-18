@@ -30,6 +30,9 @@ func newDeps(t *testing.T) *app.Deps {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if v := os.Getenv("DEVOPS_TEST_SPACING"); v != "" {
+		d.Config.UI.NavSpacing = v
+	}
 	t.Cleanup(d.Close)
 	return d
 }
@@ -105,6 +108,7 @@ func TestProductionBadge(t *testing.T) {
 }
 
 func TestTallSidebarSpacing(t *testing.T) {
+	t.Setenv("DEVOPS_TEST_SPACING", "auto")
 	m := tui.New(newDeps(t))
 	out := render(m, tea.WindowSizeMsg{Width: 140, Height: 60})
 	if testing.Verbose() {
@@ -126,6 +130,7 @@ func TestTallSidebarSpacing(t *testing.T) {
 }
 
 func TestClickingSidebarPaddingSelectsItem(t *testing.T) {
+	t.Setenv("DEVOPS_TEST_SPACING", "auto")
 	m := tui.New(newDeps(t))
 	out := render(m, tea.WindowSizeMsg{Width: 140, Height: 60})
 	line := -1
@@ -157,6 +162,7 @@ func TestNarrowSidebarNamesFit(t *testing.T) {
 }
 
 func TestSelectedSidebarItemIsCentredBlock(t *testing.T) {
+	t.Setenv("DEVOPS_TEST_SPACING", "auto")
 	lipgloss.SetColorProfile(termenv.TrueColor) // tests have no TTY; force colour output
 	defer lipgloss.SetColorProfile(termenv.Ascii)
 	m := tui.New(newDeps(t))
@@ -176,4 +182,23 @@ func TestSelectedSidebarItemIsCentredBlock(t *testing.T) {
 		}
 	}
 	t.Fatal("Overview not found")
+}
+
+func TestFooterWrapsInsteadOfCutting(t *testing.T) {
+	m := tui.New(newDeps(t))
+	render(m, tea.WindowSizeMsg{Width: 90, Height: 40})
+	out := render(m, tea.KeyMsg{Type: tea.KeyTab}) // focus the workspace so screen hints are added
+	lines := strings.Split(out, "\n")
+	footer := strings.Join(lines[len(lines)-3:], "\n")
+	if strings.Contains(footer, "…") {
+		t.Fatalf("footer was truncated:\n%s", footer)
+	}
+	for _, want := range []string{"Help", "Refresh"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("footer missing %q", want)
+		}
+	}
+	if len(lines) != 40 {
+		t.Errorf("rendered %d lines, want 40", len(lines))
+	}
 }

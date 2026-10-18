@@ -32,6 +32,9 @@ type geom struct {
 	ws, wsBody   rect
 	modal        rect // modal content area (below its title)
 	modalOn      bool
+	footerY      int    // first footer line
+	link         string // console link shown in the footer
+	linkX        [2]int // its x range on the first footer line
 }
 
 func (m *Model) navWidth() int { return m.env.Deps.Config.UI.NavWidth }
@@ -51,7 +54,9 @@ func (m *Model) View() string {
 	searchBox := m.searchBar()
 	footer := m.footer()
 	bodyY := lipgloss.Height(header) + lipgloss.Height(searchBox)
-	bodyH := m.height - bodyY - 1
+	fh := lipgloss.Height(footer)
+	bodyH := m.height - bodyY - fh
+	m.g.footerY = m.height - fh
 
 	navW := m.navWidth()
 	nav := m.nav(0, bodyY, navW, bodyH)
@@ -184,7 +189,7 @@ func (m *Model) navItems(w, h int) []string {
 	switch m.env.Deps.Config.UI.NavSpacing {
 	case "spacious":
 		gap = true
-	case "auto", "":
+	case "auto":
 		gap = h >= 2*len(app.Navigation)+2*groups+1
 	}
 	selStyle := theme.NavItem
@@ -297,18 +302,48 @@ func (m *Model) modalView(iw, ih int) string {
 	return b.String()
 }
 
+// footer shows the console link for the current selection and the key hints,
+// wrapping onto extra lines (up to 3) instead of cutting hints off.
 func (m *Model) footer() string {
-	if m.toast != "" && time.Now().Before(m.toastUntil) {
-		return components.Truncate(" "+m.toastTone.Style().Render(m.toast), m.width)
-	}
 	k := func(key, label string) string { return theme.Key.Render(key) + " " + theme.Dim.Render(label) }
-	parts := []string{k("↑↓", "Navigate"), k("Enter", "Select"), k("/", "Search"), k("Ctrl+P", "Profile"), k("Ctrl+R", "Region"), k("?", "Help")}
+	var parts []string
+	m.g.link, m.g.linkX = "", [2]int{}
+	if m.modal == nil && m.drop == nil && m.focus != focusSearch {
+		if l, ok := m.current().(core.Linker); ok {
+			if u := l.ConsoleLink(m.env); u != "" {
+				m.g.link = u
+				parts = append(parts, components.Hyperlink(u, theme.Title.Underline(true).Render("↗ Open in AWS console"))+theme.Dim.Render(" (o · Ctrl+O)"))
+			}
+		}
+	}
+	parts = append(parts, k("↑↓", "Navigate"), k("Enter", "Select"), k("/", "Search"), k("Ctrl+P", "Profile"), k("Ctrl+R", "Region"), k("?", "Help"))
 	if m.focus == focusWorkspace && m.modal == nil {
 		for _, h := range m.current().Hints() {
 			parts = append(parts, k(h.Key, h.Label))
 		}
 	}
-	return components.Truncate(" "+strings.Join(parts, "   "), m.width)
+	lines := components.Pack(parts, "   ", m.width-2)
+	if len(lines) > 3 {
+		lines = lines[:3]
+		lines[2] = components.Truncate(lines[2], m.width-2)
+	}
+	if m.g.link != "" {
+		// The link is the first item on the first line.
+		m.g.linkX = [2]int{1, 1 + lipgloss.Width(parts[0])}
+	}
+	if m.toast != "" && time.Now().Before(m.toastUntil) {
+		// The toast takes over the footer without changing its height.
+		toast := components.Truncate(m.toastTone.Style().Render(m.toast), m.width-2)
+		for i := range lines {
+			lines[i] = ""
+		}
+		lines[0] = toast
+		m.g.link = ""
+	}
+	for i := range lines {
+		lines[i] = " " + lines[i]
+	}
+	return strings.Join(lines, "\n")
 }
 
 func helpText(s core.Screen) string {
