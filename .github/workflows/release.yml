@@ -1,0 +1,59 @@
+# Push a tag like v0.2.0 to publish a release and update the Homebrew tap:
+#   git tag v0.2.0 && git push origin v0.2.0
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+
+permissions:
+  contents: write   # create the GitHub release in this repo
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: devops
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: devops/go.mod
+        cache-dependency-path: devops/go.sum
+
+    - name: Test
+      run: go test ./...
+
+    - name: Build archives (macOS + Linux, arm64 + amd64)
+      run: scripts/package.sh "${GITHUB_REF_NAME#v}" dist
+
+    - name: Create GitHub release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt \
+          --title "devops $GITHUB_REF_NAME" --generate-notes
+
+    - name: Update Homebrew tap
+      env:
+        # Fine-grained token with Contents: read & write on moovendhan-v/homebrew-tap only.
+        TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      run: |
+        if [ -z "$TAP_TOKEN" ]; then
+          echo "::warning::HOMEBREW_TAP_TOKEN is not set; skipping the tap update"
+          exit 0
+        fi
+        version="${GITHUB_REF_NAME#v}"
+        scripts/formula.sh "$version" dist/checksums.txt > "$RUNNER_TEMP/devops.rb"
+        git clone "https://x-access-token:${TAP_TOKEN}@github.com/moovendhan-v/homebrew-tap.git" "$RUNNER_TEMP/tap"
+        mkdir -p "$RUNNER_TEMP/tap/Formula"
+        cp "$RUNNER_TEMP/devops.rb" "$RUNNER_TEMP/tap/Formula/devops.rb"
+        cd "$RUNNER_TEMP/tap"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add Formula/devops.rb
+        git commit -m "devops ${version}"
+        git push

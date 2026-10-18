@@ -19,13 +19,12 @@ vet:
 check: build
 	./bin/devops --check
 
-# Static binaries for macOS (first) and Linux; no CGO needed (pure-Go SQLite).
+# Release archives for macOS and Linux (arm64 + amd64) and the Homebrew formula.
+#   make release VERSION=0.2.0
 release:
-	@mkdir -p dist
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o dist/devops-darwin-arm64 ./cmd/devops
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/devops-darwin-amd64 ./cmd/devops
-	CGO_ENABLED=0 GOOS=linux  GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/devops-linux-amd64 ./cmd/devops
-	CGO_ENABLED=0 GOOS=linux  GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o dist/devops-linux-arm64 ./cmd/devops
+	scripts/package.sh $(VERSION) dist
+	scripts/formula.sh $(VERSION) dist/checksums.txt > dist/devops.rb
+	@echo "formula written to dist/devops.rb"
 
 clean:
 	rm -rf bin dist

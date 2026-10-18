@@ -26,6 +26,24 @@ curated diagnostic workflows, all without memorising AWS CLI commands.
 
 ## Install
 
+With Homebrew (macOS and Linux):
+
+```bash
+brew install moovendhan-v/tap/devops
+```
+
+For SSM sessions, ECS Exec and database tunnels you also need the AWS CLI and the
+Session Manager plugin:
+
+```bash
+brew install awscli
+brew install --cask session-manager-plugin
+```
+
+Update later with `brew upgrade devops`.
+
+### Build from source
+
 You need Go 1.26+ to build it (pure Go, no CGO). At runtime, SSM sessions, ECS Exec
 and tunnels also need the AWS CLI v2 and the
 [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
@@ -36,7 +54,7 @@ make build        # → bin/devops
 ./bin/devops      # or: ./bin/devops --profile dev-sso --region ap-southeast-2
 make test         # unit, PTY and headless render tests (no AWS access needed)
 make check        # validate config and all command definitions
-make release      # static darwin/linux binaries in dist/
+make release VERSION=0.2.0   # archives + Homebrew formula in dist/
 ```
 
 Credentials come from your existing AWS config (`~/.aws/config`, SSO, env
@@ -154,3 +172,16 @@ Settings. Write your own commands as described in `docs/commands.md`.
 - Cancelling an AWS call stops the local request, but AWS-side work that
   already started may still complete.
 - Console deep links target the standard `aws` partition (not China/GovCloud).
+
+## Releasing
+
+1. Push a version tag from `main`:
+
+   ```bash
+   git tag v0.2.0 && git push origin v0.2.0
+   ```
+
+2. The **Release** workflow tests, builds macOS/Linux archives, publishes a
+   GitHub release, and writes `Formula/devops.rb` to
+   `moovendhan-v/homebrew-tap` (needs the `HOMEBREW_TAP_TOKEN` secret: a
+   fine-grained token with *Contents: read & write* on that repo only).
