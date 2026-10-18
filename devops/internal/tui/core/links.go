@@ -7,8 +7,8 @@ import (
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"devops/internal/aws/console"
-	"devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/console"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
 )
 
 // OpenURL opens an AWS console link in the default browser. Only links built

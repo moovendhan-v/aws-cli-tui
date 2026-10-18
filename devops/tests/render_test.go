@@ -9,11 +9,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/muesli/termenv"
 
-	"devops/internal/app"
-	"devops/internal/tui"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/app"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui"
 )
 
 // newDeps builds dependencies against an isolated home and a fake AWS config.
@@ -171,7 +171,9 @@ func TestSelectedSidebarItemIsCentredBlock(t *testing.T) {
 	for i, l := range lines {
 		if strings.Contains(ansi.Strip(l), "Overview") {
 			sidebar := func(s string) string { return ansi.Cut(s, 0, 31) }
-			bg := func(s string) bool { return strings.Contains(sidebar(s), "[48;2;") || strings.Contains(sidebar(s), ";48;2;") }
+			bg := func(s string) bool {
+				return strings.Contains(sidebar(s), "[48;2;") || strings.Contains(sidebar(s), ";48;2;")
+			}
 			if !bg(lines[i-1]) || !bg(lines[i]) || !bg(lines[i+1]) {
 				t.Fatalf("selected item should be a 3-line highlighted block:\n%q\n%q\n%q", sidebar(lines[i-1]), sidebar(lines[i]), sidebar(lines[i+1]))
 			}

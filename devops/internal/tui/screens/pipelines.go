@@ -9,13 +9,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"devops/internal/aws/auth"
-	"devops/internal/aws/cicd"
-	"devops/internal/aws/console"
-	"devops/internal/executor"
-	"devops/internal/tui/components"
-	"devops/internal/tui/core"
-	"devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/cicd"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/console"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
 )
 
 // stageDot renders one stage as a coloured dot for the pipeline list.

@@ -11,7 +11,7 @@ import (
 	sdk "github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
 
-	"devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
 )
 
 type Cluster struct {

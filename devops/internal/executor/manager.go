@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"devops/internal/aws/auth"
-	"devops/internal/safety"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
 )
 
 type Status string

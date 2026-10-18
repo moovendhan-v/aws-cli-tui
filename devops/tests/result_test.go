@@ -8,9 +8,9 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"devops/internal/aws/ecs"
-	"devops/internal/aws/metrics"
-	"devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ecs"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/metrics"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
 )
 
 func TestResultViews(t *testing.T) {

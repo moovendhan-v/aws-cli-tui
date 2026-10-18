@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
 )
 
 // Pin is a resource the user pinned to the overview.

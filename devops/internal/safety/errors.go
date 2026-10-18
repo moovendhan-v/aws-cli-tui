@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/smithy-go"
 
-	"devops/internal/aws/meter"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/meter"
 )
 
 type ErrorKind string

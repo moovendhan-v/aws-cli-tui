@@ -10,14 +10,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"devops/internal/aws/console"
-	"devops/internal/aws/ecs"
-	"devops/internal/aws/meter"
-	"devops/internal/aws/metrics"
-	"devops/internal/executor"
-	"devops/internal/tui/components"
-	"devops/internal/tui/core"
-	"devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/console"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ecs"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/meter"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/metrics"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
 )
 
 var ecsTabs = []string{"Overview", "Deployments", "Tasks", "Events", "Task definition", "Metrics"}

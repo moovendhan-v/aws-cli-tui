@@ -9,7 +9,7 @@ import (
 	ec2sdk "github.com/aws/aws-sdk-go-v2/service/ec2"
 	elb "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 
-	"devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
 )
 
 type VPC struct {

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"devops/internal/aws/auth"
-	"devops/internal/aws/logs"
-	"devops/internal/aws/meter"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/logs"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/meter"
 )
 
 type fakeEvent struct {

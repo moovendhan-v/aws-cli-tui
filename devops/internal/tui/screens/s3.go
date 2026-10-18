@@ -17,16 +17,16 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"devops/internal/aws/auth"
-	"devops/internal/aws/console"
-	"devops/internal/aws/meter"
-	"devops/internal/aws/s3x"
-	"devops/internal/executor"
-	"devops/internal/preview"
-	"devops/internal/safety"
-	"devops/internal/tui/components"
-	"devops/internal/tui/core"
-	"devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/console"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/meter"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/s3x"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/preview"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
 )
 
 type S3 struct{ *Resource }

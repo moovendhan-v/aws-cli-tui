@@ -12,17 +12,17 @@ import (
 	ecssdk "github.com/aws/aws-sdk-go-v2/service/ecs"
 	ecstypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
 
-	"devops/internal/aws/auth"
-	"devops/internal/aws/cicd"
-	"devops/internal/aws/ec2"
-	"devops/internal/aws/ecs"
-	"devops/internal/aws/lambda"
-	"devops/internal/aws/logs"
-	"devops/internal/aws/networking"
-	"devops/internal/aws/rds"
-	"devops/internal/aws/s3x"
-	"devops/internal/commands"
-	"devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/cicd"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ec2"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ecs"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/lambda"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/logs"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/networking"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/rds"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/s3x"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/commands"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
 )
 
 // Option is one choice for a form field: Value is what the command gets,

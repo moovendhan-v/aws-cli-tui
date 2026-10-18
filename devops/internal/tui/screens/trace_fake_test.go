@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
 )
 
 // TestTraceAgainstFake runs only when the local fake AWS server is up

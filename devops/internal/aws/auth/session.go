@@ -24,7 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
-	"devops/internal/aws/meter"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/meter"
 )
 
 // Context is the caller context every operation is bound to.

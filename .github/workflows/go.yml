@@ -38,6 +38,6 @@ jobs:
       run: go test ./...
 
     - name: Validate command definitions
-      run: go run ./cmd/devops --check
+      run: go run ./cmd/ctm-ops --check
       env:
         DEVOPS_HOME: ${{ runner.temp }}/devops-home

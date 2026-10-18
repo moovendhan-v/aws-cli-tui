@@ -13,14 +13,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 
-	"devops/internal/aws/console"
-	"devops/internal/aws/logs"
-	"devops/internal/aws/meter"
-	"devops/internal/executor"
-	"devops/internal/safety"
-	"devops/internal/tui/components"
-	"devops/internal/tui/core"
-	"devops/internal/tui/theme"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/console"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/logs"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/meter"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/components"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/theme"
 )
 
 const errorPattern = "?ERROR ?Error ?error ?Exception ?exception ?timeout ?Timeout ?FATAL"

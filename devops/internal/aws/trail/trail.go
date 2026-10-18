@@ -15,8 +15,8 @@ import (
 	cw "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 
-	"devops/internal/aws/auth"
-	"devops/internal/safety"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
 )
 
 type Change struct {

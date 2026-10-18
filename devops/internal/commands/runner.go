@@ -6,10 +6,10 @@ import (
 	"os/exec"
 	"time"
 
-	"devops/internal/aws/auth"
-	"devops/internal/aws/ops"
-	"devops/internal/executor"
-	"devops/internal/safety"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ops"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/safety"
 )
 
 // Prepared is a validated, context-bound command ready to run.

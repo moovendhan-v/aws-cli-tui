@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"sync"
 
-	"devops/internal/aws/auth"
-	"devops/internal/aws/ec2"
-	"devops/internal/aws/ecs"
-	"devops/internal/aws/lambda"
-	"devops/internal/aws/metrics"
-	"devops/internal/aws/networking"
-	"devops/internal/aws/rds"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ec2"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ecs"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/lambda"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/metrics"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/networking"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/rds"
 )
 
 // Count is one overview figure; Err is set when that part failed.

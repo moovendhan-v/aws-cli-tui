@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	library "devops/commands"
-	"devops/internal/aws/auth"
-	"devops/internal/aws/ops"
-	"devops/internal/executor"
+	library "github.com/moovendhan-v/aws-cli-tui/devops/commands"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/auth"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/ops"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/executor"
 )
 
 func builtin(t *testing.T) *Registry {

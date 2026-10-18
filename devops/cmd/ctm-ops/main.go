@@ -1,4 +1,4 @@
-// Command devops is a keyboard-driven AWS DevOps terminal.
+// Command ctm-ops is a keyboard-driven AWS DevOps terminal.
 package main
 
 import (
@@ -7,9 +7,9 @@ import (
 	"os"
 	"sort"
 
-	"devops/internal/app"
-	"devops/internal/preview"
-	"devops/internal/tui"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/app"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/preview"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui"
 )
 
 var version = "0.1.0-dev"
@@ -24,20 +24,20 @@ func main() {
 
 	if *showImage != "" {
 		if err := preview.Show(*showImage, os.Stdout, os.Stdin); err != nil {
-			fmt.Fprintln(os.Stderr, "devops:", err)
+			fmt.Fprintln(os.Stderr, "ctm-ops:", err)
 			os.Exit(1)
 		}
 		return
 	}
 
 	if *showVersion {
-		fmt.Println("devops", version)
+		fmt.Println("ctm-ops", version)
 		return
 	}
 
 	deps, err := app.New()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "devops:", err)
+		fmt.Fprintln(os.Stderr, "ctm-ops:", err)
 		os.Exit(1)
 	}
 	defer deps.Close()
@@ -52,7 +52,7 @@ func main() {
 		os.Exit(runCheck(deps))
 	}
 	if err := tui.Run(deps); err != nil {
-		fmt.Fprintln(os.Stderr, "devops:", err)
+		fmt.Fprintln(os.Stderr, "ctm-ops:", err)
 		os.Exit(1)
 	}
 }

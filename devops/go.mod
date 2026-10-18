@@ -1,4 +1,4 @@
-module devops
+module github.com/moovendhan-v/aws-cli-tui/devops
 
 go 1.26.0
 

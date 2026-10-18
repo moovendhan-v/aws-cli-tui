@@ -1,9 +1,9 @@
 package screens
 
 import (
-	"devops/internal/aws/console"
-	"devops/internal/aws/trail"
-	"devops/internal/tui/core"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/console"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/aws/trail"
+	"github.com/moovendhan-v/aws-cli-tui/devops/internal/tui/core"
 )
 
 // ConsoleLink implementations: the AWS console page for whatever is selected,

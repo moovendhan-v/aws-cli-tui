@@ -35,7 +35,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt \
-          --title "devops $GITHUB_REF_NAME" --generate-notes
+          --title "aws-dev-ops-utils $GITHUB_REF_NAME" --generate-notes
 
     - name: Update Homebrew tap
       env:
@@ -47,13 +47,13 @@ jobs:
           exit 0
         fi
         version="${GITHUB_REF_NAME#v}"
-        scripts/formula.sh "$version" dist/checksums.txt > "$RUNNER_TEMP/devops.rb"
+        scripts/formula.sh "$version" dist/checksums.txt > "$RUNNER_TEMP/aws-dev-ops-utils.rb"
         git clone "https://x-access-token:${TAP_TOKEN}@github.com/moovendhan-v/homebrew-tap.git" "$RUNNER_TEMP/tap"
         mkdir -p "$RUNNER_TEMP/tap/Formula"
-        cp "$RUNNER_TEMP/devops.rb" "$RUNNER_TEMP/tap/Formula/devops.rb"
+        cp "$RUNNER_TEMP/aws-dev-ops-utils.rb" "$RUNNER_TEMP/tap/Formula/aws-dev-ops-utils.rb"
         cd "$RUNNER_TEMP/tap"
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add Formula/devops.rb
-        git commit -m "devops ${version}"
+        git add Formula/aws-dev-ops-utils.rb
+        git commit -m "aws-dev-ops-utils ${version}"
         git push

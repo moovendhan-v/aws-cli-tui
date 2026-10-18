@@ -1,4 +1,4 @@
-# devops
+# aws-dev-ops-utils (`ctm-ops`)
 
 A keyboard- and mouse-driven AWS DevOps terminal. Browse infrastructure,
 investigate failures, open SSM/ECS Exec sessions inside the layout, read and
@@ -26,21 +26,40 @@ curated diagnostic workflows, all without memorising AWS CLI commands.
 
 ## Install
 
-With Homebrew (macOS and Linux):
+The package is **aws-dev-ops-utils**; the command is **`ctm-ops`**.
+
+**Homebrew** (macOS and Linux)
 
 ```bash
-brew install moovendhan-v/tap/devops
+brew install moovendhan-v/tap/aws-dev-ops-utils
 ```
 
-For SSM sessions, ECS Exec and database tunnels you also need the AWS CLI and the
-Session Manager plugin:
+**Install script** (macOS and Linux, no Homebrew needed; verifies the SHA-256 checksum)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/moovendhan-v/aws-cli-tui/main/install.sh | sh
+```
+
+Pin a version or choose a folder with `VERSION=0.1.0` / `INSTALL_DIR=~/bin` before `sh`.
+
+**Go** (Go 1.26+)
+
+```bash
+go install github.com/moovendhan-v/aws-cli-tui/devops/cmd/ctm-ops@latest
+```
+
+**Manual download**: grab `aws-dev-ops-utils_<version>_<os>_<arch>.tar.gz` from the
+[releases page](https://github.com/moovendhan-v/aws-cli-tui/releases), check it
+against `checksums.txt`, and put `ctm-ops` on your PATH.
+
+Then run `ctm-ops`. For SSM sessions, ECS Exec and database tunnels also install:
 
 ```bash
 brew install awscli
 brew install --cask session-manager-plugin
 ```
 
-Update later with `brew upgrade devops`.
+Update with `brew upgrade aws-dev-ops-utils` (or re-run the install script).
 
 ### Build from source
 
@@ -50,8 +69,8 @@ and tunnels also need the AWS CLI v2 and the
 Video frame previews use `ffmpeg` when it's installed.
 
 ```bash
-make build        # → bin/devops
-./bin/devops      # or: ./bin/devops --profile dev-sso --region ap-southeast-2
+make build        # → bin/ctm-ops
+./bin/ctm-ops     # or: ./bin/ctm-ops --profile dev-sso --region ap-southeast-2
 make test         # unit, PTY and headless render tests (no AWS access needed)
 make check        # validate config and all command definitions
 make release VERSION=0.2.0   # archives + Homebrew formula in dist/
@@ -182,6 +201,6 @@ Settings. Write your own commands as described in `docs/commands.md`.
    ```
 
 2. The **Release** workflow tests, builds macOS/Linux archives, publishes a
-   GitHub release, and writes `Formula/devops.rb` to
+   GitHub release, and writes `Formula/aws-dev-ops-utils.rb` to
    `moovendhan-v/homebrew-tap` (needs the `HOMEBREW_TAP_TOKEN` secret: a
    fine-grained token with *Contents: read & write* on that repo only).
